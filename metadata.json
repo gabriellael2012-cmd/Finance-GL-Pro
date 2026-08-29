@@ -1,0 +1,6 @@
+{
+  "name": "Finance GL Pro",
+  "description": "Plataforma financeira premium desenvolvida pela GL Studios com dashboards inteligentes, fluxo de caixa, controle de contas e gestão universal.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
