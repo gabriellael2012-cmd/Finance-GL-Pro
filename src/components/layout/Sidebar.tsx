@@ -21,6 +21,12 @@ import {
   PlusCircle,
   Zap,
   X,
+  Users,
+  Truck,
+  Tag,
+  Briefcase,
+  TrendingUp,
+  TrendingDown,
 } from 'lucide-react';
 import { useFinance } from '../../context/FinanceContext';
 import { NavigationTab } from '../../types';
@@ -54,6 +60,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   } = useFinance();
 
   const [financeMenuExpanded, setFinanceMenuExpanded] = useState<boolean>(true);
+  const [cadastrosMenuExpanded, setCadastrosMenuExpanded] = useState<boolean>(false);
+  const [goalsMenuExpanded, setGoalsMenuExpanded] = useState<boolean>(false);
   const [sheetDropdownOpen, setSheetDropdownOpen] = useState<boolean>(false);
 
   // Close menu with ESC key
@@ -74,6 +82,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
     'transfers',
     'payables',
     'receivables',
+  ].includes(activeTab);
+
+  const isCadastrosSubActive = [
+    'registrations',
+    'income_types',
+    'expense_types',
+    'income_methods',
+    'expense_methods',
+    'clients',
+    'suppliers',
+    'projects_docs',
+  ].includes(activeTab);
+
+  const isGoalsSubActive = [
+    'goals',
+    'revenue_goals',
+    'expense_goals',
   ].includes(activeTab);
 
   // When clicking ANY tab, navigate AND immediately close the menu automatically
@@ -207,6 +232,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           </button>
 
+          {/* Saldos Iniciais */}
+          <button
+            id="nav-initial-balances"
+            onClick={() => handleNavClick('initial_balances')}
+            className={navItemClass('initial_balances')}
+          >
+            <div className="flex items-center gap-3">
+              <Wallet className="w-4 h-4 text-emerald-400" />
+              <span>Saldos Iniciais</span>
+            </div>
+            <span className="text-[10px] font-bold text-emerald-400 bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-800/40">
+              Início
+            </span>
+          </button>
+
           {/* Financeiro (Parent with Submenus) */}
           <div className="pt-1">
             <button
@@ -332,6 +372,91 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           </button>
 
+          {/* Cadastros (Parent with Submenus) */}
+          <div className="pt-1">
+            <button
+              id="nav-cadastros-menu"
+              onClick={() => setCadastrosMenuExpanded(!cadastrosMenuExpanded)}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-medium text-sm transition-colors ${
+                isCadastrosSubActive
+                  ? 'text-blue-400 bg-blue-950/30'
+                  : 'text-slate-400 hover:text-slate-100 hover:bg-slate-900/80'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Users className="w-4 h-4 text-purple-400" />
+                <span>Cadastros</span>
+              </div>
+              {cadastrosMenuExpanded ? (
+                <ChevronDown className="w-4 h-4 text-slate-500" />
+              ) : (
+                <ChevronRight className="w-4 h-4 text-slate-500" />
+              )}
+            </button>
+
+            {cadastrosMenuExpanded && (
+              <div className="mt-1 space-y-0.5 relative before:absolute before:left-5 before:top-2 before:bottom-2 before:w-px before:bg-slate-800">
+                <button
+                  onClick={() => handleNavClick('registrations')}
+                  className={subNavItemClass('registrations')}
+                >
+                  <span>Central de Cadastros</span>
+                </button>
+                <button
+                  onClick={() => handleNavClick('income_types')}
+                  className={subNavItemClass('income_types')}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <Tag className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Tipos de Receitas</span>
+                  </div>
+                </button>
+                <button
+                  onClick={() => handleNavClick('expense_types')}
+                  className={subNavItemClass('expense_types')}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <Tag className="w-3.5 h-3.5 text-rose-400" />
+                    <span>Tipos de Despesas</span>
+                  </div>
+                </button>
+                <button
+                  onClick={() => handleNavClick('income_methods')}
+                  className={subNavItemClass('income_methods')}
+                >
+                  <span>Meios de Pagto / Recebto</span>
+                </button>
+                <button
+                  onClick={() => handleNavClick('clients')}
+                  className={subNavItemClass('clients')}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5 text-blue-400" />
+                    <span>Clientes</span>
+                  </div>
+                </button>
+                <button
+                  onClick={() => handleNavClick('suppliers')}
+                  className={subNavItemClass('suppliers')}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <Truck className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Fornecedores</span>
+                  </div>
+                </button>
+                <button
+                  onClick={() => handleNavClick('projects_docs')}
+                  className={subNavItemClass('projects_docs')}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <Briefcase className="w-3.5 h-3.5 text-purple-400" />
+                    <span>Projetos & Docs</span>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
+
           {/* Contas & Open Finance */}
           <button
             id="nav-accounts"
@@ -377,17 +502,60 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </span>
           </button>
 
-          {/* Metas */}
-          <button
-            id="nav-goals"
-            onClick={() => handleNavClick('goals')}
-            className={navItemClass('goals')}
-          >
-            <div className="flex items-center gap-3">
-              <Target className="w-4 h-4" />
-              <span>Metas</span>
-            </div>
-          </button>
+          {/* Metas (Parent with Submenus) */}
+          <div className="pt-1">
+            <button
+              id="nav-goals-menu"
+              onClick={() => setGoalsMenuExpanded(!goalsMenuExpanded)}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-medium text-sm transition-colors ${
+                isGoalsSubActive
+                  ? 'text-emerald-400 bg-emerald-950/30'
+                  : 'text-slate-400 hover:text-slate-100 hover:bg-slate-900/80'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Target className="w-4 h-4 text-emerald-400" />
+                <span>Metas & Orçamentos</span>
+              </div>
+              {goalsMenuExpanded ? (
+                <ChevronDown className="w-4 h-4 text-slate-500" />
+              ) : (
+                <ChevronRight className="w-4 h-4 text-slate-500" />
+              )}
+            </button>
+
+            {goalsMenuExpanded && (
+              <div className="mt-1 space-y-0.5 relative before:absolute before:left-5 before:top-2 before:bottom-2 before:w-px before:bg-slate-800">
+                <button
+                  onClick={() => handleNavClick('revenue_goals')}
+                  className={subNavItemClass('revenue_goals')}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Metas de Receitas</span>
+                  </div>
+                </button>
+                <button
+                  onClick={() => handleNavClick('expense_goals')}
+                  className={subNavItemClass('expense_goals')}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <TrendingDown className="w-3.5 h-3.5 text-rose-400" />
+                    <span>Metas de Gastos</span>
+                  </div>
+                </button>
+                <button
+                  onClick={() => handleNavClick('goals')}
+                  className={subNavItemClass('goals')}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <Target className="w-3.5 h-3.5 text-blue-400" />
+                    <span>Metas Gerais</span>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
 
           {/* Base de Dados */}
           <button

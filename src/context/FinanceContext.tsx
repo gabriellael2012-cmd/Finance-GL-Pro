@@ -2,17 +2,30 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from '
 import {
   Account,
   Category,
+  Client,
+  CustomCategoryItem,
+  FinancialDocument,
   FinancialSheet,
   Goal,
+  MonthlyExpenseGoal,
+  MonthlyRevenueGoal,
   NavigationTab,
   NotificationItem,
+  PaymentMethodItem,
   PeriodFilter,
   PriceAnalysisRecord,
+  Project,
   SheetControlType,
+  Supplier,
   Transaction,
   UserProfile,
 } from '../types';
 import {
+  DEFAULT_EXPENSE_ITEMS,
+  DEFAULT_EXPENSE_METHODS,
+  DEFAULT_INCOME_ITEMS,
+  DEFAULT_INCOME_METHODS,
+  DEFAULT_PROJECTS,
   INITIAL_ACCOUNTS,
   INITIAL_CATEGORIES,
   INITIAL_GOALS,
@@ -38,6 +51,15 @@ interface FinanceContextType {
   categories: Category[];
   transactions: Transaction[];
   goals: Goal[];
+  clients: Client[];
+  suppliers: Supplier[];
+  projects: Project[];
+  documents: FinancialDocument[];
+  customCategoryItems: CustomCategoryItem[];
+  paymentMethodItems: PaymentMethodItem[];
+  revenueGoals: MonthlyRevenueGoal[];
+  expenseGoals: MonthlyExpenseGoal[];
+  selectedYear: number;
   priceAnalyses: PriceAnalysisRecord[];
   userProfile: UserProfile;
   activeTab: NavigationTab;
@@ -51,10 +73,13 @@ interface FinanceContextType {
   unreadNotificationCount: number;
   toasts: ToastMessage[];
   globalSearchOpen: boolean;
+  isGlobalSearchOpen: boolean;
   transactionModalOpen: boolean;
+  isTransactionModalOpen: boolean;
   transactionModalType: 'income' | 'expense';
   editingTransaction: Transaction | null;
   transferModalOpen: boolean;
+  isTransferModalOpen: boolean;
   isOnboardingOpen: boolean;
   onboardingOpen: boolean;
 
@@ -63,6 +88,7 @@ interface FinanceContextType {
   setPeriodFilter: (filter: PeriodFilter) => void;
   setCustomDateRange: (start: string, end: string) => void;
   setActiveSheetId: (sheetId: string) => void;
+  setSelectedYear: (year: number) => void;
   setGlobalSearchOpen: (open: boolean) => void;
   setTransferModalOpen: (open: boolean) => void;
   setOnboardingOpen: (open: boolean) => void;
@@ -87,9 +113,9 @@ interface FinanceContextType {
     fromAccountId: string,
     toAccountId: string,
     amount: number,
-    description: string,
-    date: string,
-    paymentMethod: string,
+    arg4: string,
+    arg5?: string,
+    paymentMethod?: string,
     notes?: string
   ) => void;
   syncBankAccounts: () => Promise<void>;
@@ -97,6 +123,42 @@ interface FinanceContextType {
   addCategory: (cat: Omit<Category, 'id' | 'sheetId'>) => Category;
   updateCategory: (cat: Category) => void;
   deleteCategory: (id: string) => void;
+
+  // Clients
+  addClient: (client: Omit<Client, 'id' | 'createdAt' | 'sheetId'>) => Client;
+  updateClient: (client: Client) => void;
+  deleteClient: (id: string) => void;
+
+  // Suppliers
+  addSupplier: (supplier: Omit<Supplier, 'id' | 'createdAt' | 'sheetId'>) => Supplier;
+  updateSupplier: (supplier: Supplier) => void;
+  deleteSupplier: (id: string) => void;
+
+  // Projects
+  addProject: (project: Omit<Project, 'id' | 'createdAt' | 'sheetId'>) => Project;
+  updateProject: (project: Project) => void;
+  deleteProject: (id: string) => void;
+
+  // Documents
+  addDocument: (doc: Omit<FinancialDocument, 'id' | 'createdAt' | 'sheetId'>) => FinancialDocument;
+  updateDocument: (doc: FinancialDocument) => void;
+  deleteDocument: (id: string) => void;
+
+  // Custom Category Items (Produtos 1-9, Serviços 1-9...)
+  updateCategoryItemName: (id: string, name: string) => void;
+  addCategoryItem: (group: string, name: string) => CustomCategoryItem;
+  deleteCategoryItem: (id: string) => void;
+  resetCategoryItemsToDefault: () => void;
+
+  // Payment Methods
+  updatePaymentMethodName: (id: string, name: string) => void;
+  addPaymentMethod: (type: 'income' | 'expense', name: string) => PaymentMethodItem;
+  deletePaymentMethod: (id: string) => void;
+
+  // Revenue & Expense Goals
+  saveMonthlyRevenueGoal: (goal: Omit<MonthlyRevenueGoal, 'id' | 'sheetId'>) => void;
+  saveMonthlyExpenseGoal: (goal: Omit<MonthlyExpenseGoal, 'id' | 'sheetId'>) => void;
+  updateSheetStartDate: (sheetId: string, startDate: string) => void;
 
   addGoal: (goal: Omit<Goal, 'id' | 'createdAt' | 'sheetId'>) => Goal;
   updateGoal: (goal: Goal) => void;
@@ -112,6 +174,7 @@ interface FinanceContextType {
           controlType?: SheetControlType;
           currency?: string;
           initialBalance?: number;
+          startDate?: string;
           populateDefaultCategories?: boolean;
         }
       | boolean
@@ -149,6 +212,14 @@ interface FinanceContextType {
   sheetAccounts: Account[];
   sheetCategories: Category[];
   sheetGoals: Goal[];
+  sheetClients: Client[];
+  sheetSuppliers: Supplier[];
+  sheetProjects: Project[];
+  sheetDocuments: FinancialDocument[];
+  sheetCategoryItems: CustomCategoryItem[];
+  sheetPaymentMethods: PaymentMethodItem[];
+  sheetRevenueGoals: MonthlyRevenueGoal[];
+  sheetExpenseGoals: MonthlyExpenseGoal[];
   sheetPriceAnalyses: PriceAnalysisRecord[];
   totalBalance: number;
   totalPeriodIncome: number;
@@ -176,6 +247,15 @@ const STORAGE_KEYS = {
   PRICE_ANALYSES: 'finance_gl_pro_price_analyses_v2',
   IS_DEMO: 'finance_gl_pro_is_demo_v2',
   LAST_SYNC: 'finance_gl_pro_last_sync_v2',
+  CLIENTS: 'finance_gl_pro_clients_v2',
+  SUPPLIERS: 'finance_gl_pro_suppliers_v2',
+  PROJECTS: 'finance_gl_pro_projects_v2',
+  DOCUMENTS: 'finance_gl_pro_documents_v2',
+  CUSTOM_ITEMS: 'finance_gl_pro_custom_items_v2',
+  PAYMENT_METHODS: 'finance_gl_pro_payment_methods_v2',
+  REVENUE_GOALS: 'finance_gl_pro_revenue_goals_v2',
+  EXPENSE_GOALS: 'finance_gl_pro_expense_goals_v2',
+  SELECTED_YEAR: 'finance_gl_pro_selected_year_v2',
 };
 
 const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
@@ -211,6 +291,79 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const saved = localStorage.getItem(STORAGE_KEYS.GOALS);
     return saved ? JSON.parse(saved) : INITIAL_GOALS;
   });
+
+  const [clients, setClients] = useState<Client[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.CLIENTS);
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [suppliers, setSuppliers] = useState<Supplier[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.SUPPLIERS);
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [projects, setProjects] = useState<Project[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.PROJECTS);
+    if (saved) return JSON.parse(saved);
+    return DEFAULT_PROJECTS.map((p) => ({
+      ...p,
+      sheetId: 'sheet-default',
+      createdAt: new Date().toISOString(),
+    }));
+  });
+
+  const [documents, setDocuments] = useState<FinancialDocument[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.DOCUMENTS);
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [customCategoryItems, setCustomCategoryItems] = useState<CustomCategoryItem[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.CUSTOM_ITEMS);
+    if (saved) return JSON.parse(saved);
+    return [
+      ...DEFAULT_INCOME_ITEMS.map((item) => ({ ...item, sheetId: 'sheet-default' })),
+      ...DEFAULT_EXPENSE_ITEMS.map((item) => ({ ...item, sheetId: 'sheet-default' })),
+    ];
+  });
+
+  const [paymentMethodItems, setPaymentMethodItems] = useState<PaymentMethodItem[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.PAYMENT_METHODS);
+    if (saved) return JSON.parse(saved);
+    return [
+      ...DEFAULT_INCOME_METHODS.map((name, i) => ({
+        id: `pmi-inc-${i}`,
+        sheetId: 'sheet-default',
+        type: 'income' as const,
+        name,
+      })),
+      ...DEFAULT_EXPENSE_METHODS.map((name, i) => ({
+        id: `pmi-exp-${i}`,
+        sheetId: 'sheet-default',
+        type: 'expense' as const,
+        name,
+      })),
+    ];
+  });
+
+  const [revenueGoals, setRevenueGoals] = useState<MonthlyRevenueGoal[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.REVENUE_GOALS);
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [expenseGoals, setExpenseGoals] = useState<MonthlyExpenseGoal[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.EXPENSE_GOALS);
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [selectedYear, setSelectedYearState] = useState<number>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.SELECTED_YEAR);
+    return saved ? parseInt(saved, 10) : new Date().getFullYear();
+  });
+
+  const setSelectedYear = (yr: number) => {
+    setSelectedYearState(yr);
+    localStorage.setItem(STORAGE_KEYS.SELECTED_YEAR, String(yr));
+  };
 
   const [priceAnalyses, setPriceAnalyses] = useState<PriceAnalysisRecord[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.PRICE_ANALYSES);
@@ -284,6 +437,38 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, [goals]);
 
   useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.CLIENTS, JSON.stringify(clients));
+  }, [clients]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.SUPPLIERS, JSON.stringify(suppliers));
+  }, [suppliers]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(projects));
+  }, [projects]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(documents));
+  }, [documents]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.CUSTOM_ITEMS, JSON.stringify(customCategoryItems));
+  }, [customCategoryItems]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.PAYMENT_METHODS, JSON.stringify(paymentMethodItems));
+  }, [paymentMethodItems]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.REVENUE_GOALS, JSON.stringify(revenueGoals));
+  }, [revenueGoals]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.EXPENSE_GOALS, JSON.stringify(expenseGoals));
+  }, [expenseGoals]);
+
+  useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.PRICE_ANALYSES, JSON.stringify(priceAnalyses));
   }, [priceAnalyses]);
 
@@ -341,8 +526,34 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, [transactions, activeSheetId]);
 
   const sheetAccounts = useMemo(() => {
-    return accounts.filter((a) => a.sheetId === activeSheetId);
-  }, [accounts, activeSheetId]);
+    const completedTxs = transactions.filter(
+      (tx) => tx.sheetId === activeSheetId && tx.status === 'completed'
+    );
+    return accounts
+      .filter((a) => a.sheetId === activeSheetId)
+      .map((account) => {
+        const incomeSum = completedTxs
+          .filter((tx) => tx.type === 'income' && tx.accountId === account.id)
+          .reduce((sum, tx) => sum + tx.amount, 0);
+        const expenseSum = completedTxs
+          .filter((tx) => tx.type === 'expense' && tx.accountId === account.id)
+          .reduce((sum, tx) => sum + tx.amount, 0);
+        const transferIn = completedTxs
+          .filter((tx) => tx.type === 'transfer' && tx.toAccountId === account.id)
+          .reduce((sum, tx) => sum + tx.amount, 0);
+        const transferOut = completedTxs
+          .filter((tx) => tx.type === 'transfer' && tx.accountId === account.id)
+          .reduce((sum, tx) => sum + tx.amount, 0);
+
+        const calculatedBalance =
+          account.initialBalance + incomeSum - expenseSum + transferIn - transferOut;
+
+        return {
+          ...account,
+          currentBalance: calculatedBalance,
+        };
+      });
+  }, [accounts, transactions, activeSheetId]);
 
   const sheetCategories = useMemo(() => {
     return categories.filter((c) => c.sheetId === activeSheetId);
@@ -355,6 +566,38 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const sheetPriceAnalyses = useMemo(() => {
     return priceAnalyses.filter((p) => p.sheetId === activeSheetId);
   }, [priceAnalyses, activeSheetId]);
+
+  const sheetClients = useMemo(() => {
+    return clients.filter((c) => c.sheetId === activeSheetId);
+  }, [clients, activeSheetId]);
+
+  const sheetSuppliers = useMemo(() => {
+    return suppliers.filter((s) => s.sheetId === activeSheetId);
+  }, [suppliers, activeSheetId]);
+
+  const sheetProjects = useMemo(() => {
+    return projects.filter((p) => p.sheetId === activeSheetId);
+  }, [projects, activeSheetId]);
+
+  const sheetDocuments = useMemo(() => {
+    return documents.filter((d) => d.sheetId === activeSheetId);
+  }, [documents, activeSheetId]);
+
+  const sheetCategoryItems = useMemo(() => {
+    return customCategoryItems.filter((i) => i.sheetId === activeSheetId);
+  }, [customCategoryItems, activeSheetId]);
+
+  const sheetPaymentMethods = useMemo(() => {
+    return paymentMethodItems.filter((m) => m.sheetId === activeSheetId);
+  }, [paymentMethodItems, activeSheetId]);
+
+  const sheetRevenueGoals = useMemo(() => {
+    return revenueGoals.filter((g) => g.sheetId === activeSheetId && g.year === selectedYear);
+  }, [revenueGoals, activeSheetId, selectedYear]);
+
+  const sheetExpenseGoals = useMemo(() => {
+    return expenseGoals.filter((g) => g.sheetId === activeSheetId && g.year === selectedYear);
+  }, [expenseGoals, activeSheetId, selectedYear]);
 
   const periodDateRange = useMemo(() => {
     return getPeriodDates(periodFilter, customStartDate, customEndDate);
@@ -378,38 +621,19 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Recalculate Accounts Current Balances dynamically from Transactions + InitialBalance
   const totalBalance = useMemo(() => {
-    return sheetAccounts.reduce((acc, account) => {
-      const completedTxs = sheetTransactions.filter((tx) => tx.status === 'completed');
-      const incomeSum = completedTxs
-        .filter((tx) => tx.type === 'income' && tx.accountId === account.id)
-        .reduce((sum, tx) => sum + tx.amount, 0);
-      const expenseSum = completedTxs
-        .filter((tx) => tx.type === 'expense' && tx.accountId === account.id)
-        .reduce((sum, tx) => sum + tx.amount, 0);
-      const transferIn = completedTxs
-        .filter((tx) => tx.type === 'transfer' && tx.toAccountId === account.id)
-        .reduce((sum, tx) => sum + tx.amount, 0);
-      const transferOut = completedTxs
-        .filter((tx) => tx.type === 'transfer' && tx.accountId === account.id)
-        .reduce((sum, tx) => sum + tx.amount, 0);
+    return sheetAccounts.reduce((acc, account) => acc + account.currentBalance, 0);
+  }, [sheetAccounts]);
 
-      const calculatedBalance =
-        account.initialBalance + incomeSum - expenseSum + transferIn - transferOut;
-
-      return acc + calculatedBalance;
-    }, 0);
-  }, [sheetAccounts, sheetTransactions]);
-
-  // Totals for current period
+  // Totals for current period (Realized / Efetivado)
   const totalPeriodIncome = useMemo(() => {
     return filteredTransactions
-      .filter((tx) => tx.type === 'income' && tx.status !== 'overdue')
+      .filter((tx) => tx.type === 'income' && tx.status === 'completed')
       .reduce((sum, tx) => sum + tx.amount, 0);
   }, [filteredTransactions]);
 
   const totalPeriodExpense = useMemo(() => {
     return filteredTransactions
-      .filter((tx) => tx.type === 'expense' && tx.status !== 'overdue')
+      .filter((tx) => tx.type === 'expense' && tx.status === 'completed')
       .reduce((sum, tx) => sum + tx.amount, 0);
   }, [filteredTransactions]);
 
@@ -557,8 +781,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     const isIncome = newTx.type === 'income';
     showToast(
-      isIncome ? 'Receita Registrada!' : 'Despesa Registrada!',
-      `${newTx.description} (R$ ${newTx.amount.toFixed(2).replace('.', ',')}) salvo com sucesso.`,
+      isIncome ? 'Receita Adicionada' : 'Despesa Adicionada',
+      isIncome ? 'Receita adicionada com sucesso.' : 'Despesa adicionada com sucesso.',
       'success'
     );
 
@@ -567,13 +791,22 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const updateTransaction = (updatedTx: Transaction) => {
     setTransactions((prev) => prev.map((t) => (t.id === updatedTx.id ? updatedTx : t)));
-    showToast('Lançamento Atualizado', `${updatedTx.description} foi atualizado com sucesso.`, 'info');
+    const isIncome = updatedTx.type === 'income';
+    showToast(
+      'Lançamento Atualizado',
+      isIncome ? 'Receita atualizada com sucesso.' : 'Despesa atualizada com sucesso.',
+      'info'
+    );
   };
 
   const deleteTransaction = (id: string) => {
     const tx = transactions.find((t) => t.id === id);
     setTransactions((prev) => prev.filter((t) => t.id !== id));
-    showToast('Lançamento Excluído', tx ? `${tx.description} foi removido.` : 'Removido com sucesso.', 'warning');
+    showToast(
+      'Lançamento Excluído',
+      tx?.type === 'income' ? 'Receita excluída com sucesso.' : 'Despesa excluída com sucesso.',
+      'warning'
+    );
   };
 
   const quickPayBill = (id: string) => {
@@ -595,22 +828,33 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     fromAccountId: string,
     toAccountId: string,
     amount: number,
-    description: string,
-    date: string,
-    paymentMethod: string,
+    arg4: string,
+    arg5?: string,
+    paymentMethod?: string,
     notes?: string
   ) => {
+    const isDate = (s?: string) => Boolean(s && /^\d{4}-\d{2}-\d{2}$/.test(s));
+    const date = isDate(arg4)
+      ? arg4
+      : isDate(arg5)
+      ? arg5!
+      : new Date().toISOString().slice(0, 10);
+    const description = isDate(arg4)
+      ? (arg5 || 'Transferência entre contas')
+      : (arg4 || 'Transferência entre contas');
+    const method = paymentMethod || 'transfer';
+
     const transferTx: Transaction = {
       id: 'tx-trans-' + Date.now(),
       sheetId: activeSheetId,
       type: 'transfer',
-      description: description || 'Transferência entre contas',
+      description,
       amount,
       date,
       categoryId: sheetCategories[0]?.id || 'cat-transfer',
       accountId: fromAccountId,
       toAccountId,
-      paymentMethod: paymentMethod || 'bank_transfer',
+      paymentMethod: method,
       status: 'completed',
       notes,
       createdAt: new Date().toISOString(),
@@ -626,6 +870,228 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       `R$ ${amount.toFixed(2).replace('.', ',')} transferidos de "${fromAcc}" para "${toAcc}".`,
       'success'
     );
+  };
+
+  // Client CRUD
+  const addClient = (clientData: Omit<Client, 'id' | 'createdAt' | 'sheetId'>): Client => {
+    const newClient: Client = {
+      ...clientData,
+      id: 'cli-' + Date.now(),
+      sheetId: activeSheetId,
+      code: clientData.code || `CLI-${String(sheetClients.length + 1).padStart(3, '0')}`,
+      createdAt: new Date().toISOString(),
+    };
+    setClients((prev) => [newClient, ...prev]);
+    showToast('Cliente Cadastrado', `Cliente "${newClient.name}" adicionado com sucesso.`, 'success');
+    return newClient;
+  };
+
+  const updateClient = (client: Client) => {
+    setClients((prev) => prev.map((c) => (c.id === client.id ? client : c)));
+    showToast('Cliente Atualizado', `Cliente "${client.name}" atualizado.`, 'info');
+  };
+
+  const deleteClient = (id: string) => {
+    const cl = clients.find((c) => c.id === id);
+    setClients((prev) => prev.filter((c) => c.id !== id));
+    showToast('Cliente Removido', cl ? `"${cl.name}" foi removido.` : 'Cliente removido.', 'warning');
+  };
+
+  // Supplier CRUD
+  const addSupplier = (supplierData: Omit<Supplier, 'id' | 'createdAt' | 'sheetId'>): Supplier => {
+    const newSupplier: Supplier = {
+      ...supplierData,
+      id: 'sup-' + Date.now(),
+      sheetId: activeSheetId,
+      code: supplierData.code || `FOR-${String(sheetSuppliers.length + 1).padStart(3, '0')}`,
+      createdAt: new Date().toISOString(),
+    };
+    setSuppliers((prev) => [newSupplier, ...prev]);
+    showToast('Fornecedor Cadastrado', `Fornecedor "${newSupplier.name}" adicionado com sucesso.`, 'success');
+    return newSupplier;
+  };
+
+  const updateSupplier = (supplier: Supplier) => {
+    setSuppliers((prev) => prev.map((s) => (s.id === supplier.id ? supplier : s)));
+    showToast('Fornecedor Atualizado', `Fornecedor "${supplier.name}" atualizado.`, 'info');
+  };
+
+  const deleteSupplier = (id: string) => {
+    const s = suppliers.find((item) => item.id === id);
+    setSuppliers((prev) => prev.filter((item) => item.id !== id));
+    showToast('Fornecedor Removido', s ? `"${s.name}" foi removido.` : 'Fornecedor removido.', 'warning');
+  };
+
+  // Project CRUD
+  const addProject = (projectData: Omit<Project, 'id' | 'createdAt' | 'sheetId'>): Project => {
+    const newProject: Project = {
+      ...projectData,
+      id: 'prj-' + Date.now(),
+      sheetId: activeSheetId,
+      code: projectData.code || `PRJ-${String(sheetProjects.length + 1).padStart(3, '0')}`,
+      createdAt: new Date().toISOString(),
+    };
+    setProjects((prev) => [newProject, ...prev]);
+    showToast('Projeto Criado', `Projeto "${newProject.name}" cadastrado.`, 'success');
+    return newProject;
+  };
+
+  const updateProject = (project: Project) => {
+    setProjects((prev) => prev.map((p) => (p.id === project.id ? project : p)));
+    showToast('Projeto Atualizado', `Projeto "${project.name}" atualizado.`, 'info');
+  };
+
+  const deleteProject = (id: string) => {
+    const p = projects.find((item) => item.id === id);
+    setProjects((prev) => prev.filter((item) => item.id !== id));
+    showToast('Projeto Removido', p ? `"${p.name}" foi removido.` : 'Projeto removido.', 'warning');
+  };
+
+  // Document CRUD
+  const addDocument = (docData: Omit<FinancialDocument, 'id' | 'createdAt' | 'sheetId'>): FinancialDocument => {
+    const newDoc: FinancialDocument = {
+      ...docData,
+      id: 'doc-' + Date.now(),
+      sheetId: activeSheetId,
+      code: docData.code || `DOC-${String(sheetDocuments.length + 1).padStart(4, '0')}`,
+      createdAt: new Date().toISOString(),
+    };
+    setDocuments((prev) => [newDoc, ...prev]);
+    showToast('Documento Registrado', `Documento "${newDoc.code}" cadastrado com sucesso.`, 'success');
+    return newDoc;
+  };
+
+  const updateDocument = (doc: FinancialDocument) => {
+    setDocuments((prev) => prev.map((d) => (d.id === doc.id ? doc : d)));
+    showToast('Documento Atualizado', `Documento "${doc.code}" atualizado.`, 'info');
+  };
+
+  const deleteDocument = (id: string) => {
+    const d = documents.find((item) => item.id === id);
+    setDocuments((prev) => prev.filter((item) => item.id !== id));
+    showToast('Documento Removido', d ? `"${d.code}" foi removido.` : 'Documento removido.', 'warning');
+  };
+
+  // Custom Category Items CRUD
+  const updateCategoryItemName = (id: string, name: string) => {
+    setCustomCategoryItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, name } : item))
+    );
+    showToast('Item Salvo', `Atualizado para "${name}".`, 'success');
+  };
+
+  const addCategoryItem = (group: string, name: string): CustomCategoryItem => {
+    const newItem: CustomCategoryItem = {
+      id: `item-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+      sheetId: activeSheetId,
+      group,
+      name,
+    };
+    setCustomCategoryItems((prev) => [...prev, newItem]);
+    showToast('Item Adicionado', `"${name}" adicionado com sucesso.`, 'success');
+    return newItem;
+  };
+
+  const deleteCategoryItem = (id: string) => {
+    setCustomCategoryItems((prev) => prev.filter((item) => item.id !== id));
+    showToast('Item Removido', 'Item excluído.', 'info');
+  };
+
+  const resetCategoryItemsToDefault = () => {
+    const defaults: CustomCategoryItem[] = [
+      ...DEFAULT_INCOME_ITEMS.map((item) => ({ ...item, sheetId: activeSheetId })),
+      ...DEFAULT_EXPENSE_ITEMS.map((item) => ({ ...item, sheetId: activeSheetId })),
+    ];
+    setCustomCategoryItems((prev) => [
+      ...prev.filter((i) => i.sheetId !== activeSheetId),
+      ...defaults,
+    ]);
+    showToast('Sugestões Restauradas', 'As opções padrões foram redefinidas.', 'info');
+  };
+
+  // Payment Methods CRUD
+  const updatePaymentMethodName = (id: string, name: string) => {
+    setPaymentMethodItems((prev) =>
+      prev.map((m) => (m.id === id ? { ...m, name } : m))
+    );
+    showToast('Método Atualizado', `Atualizado para "${name}".`, 'success');
+  };
+
+  const addPaymentMethod = (type: 'income' | 'expense', name: string): PaymentMethodItem => {
+    const newMethod: PaymentMethodItem = {
+      id: `pmi-${Date.now()}`,
+      sheetId: activeSheetId,
+      type,
+      name,
+    };
+    setPaymentMethodItems((prev) => [...prev, newMethod]);
+    showToast('Método Adicionado', `"${name}" cadastrado com sucesso.`, 'success');
+    return newMethod;
+  };
+
+  const deletePaymentMethod = (id: string) => {
+    setPaymentMethodItems((prev) => prev.filter((m) => m.id !== id));
+    showToast('Método Removido', 'Forma de pagamento removida.', 'info');
+  };
+
+  // Revenue Goals CRUD
+  const saveMonthlyRevenueGoal = (goalData: Omit<MonthlyRevenueGoal, 'id' | 'sheetId'>) => {
+    setRevenueGoals((prev) => {
+      const existingIdx = prev.findIndex(
+        (g) => g.sheetId === activeSheetId && g.year === goalData.year && g.month === goalData.month
+      );
+      if (existingIdx >= 0) {
+        const updated = [...prev];
+        updated[existingIdx] = {
+          ...updated[existingIdx],
+          ...goalData,
+        };
+        return updated;
+      }
+      return [
+        ...prev,
+        {
+          ...goalData,
+          id: `rev-goal-${Date.now()}`,
+          sheetId: activeSheetId,
+        },
+      ];
+    });
+    showToast('Meta de Receita Salva', 'Valores orçados atualizados com sucesso.', 'success');
+  };
+
+  // Expense Goals CRUD
+  const saveMonthlyExpenseGoal = (goalData: Omit<MonthlyExpenseGoal, 'id' | 'sheetId'>) => {
+    setExpenseGoals((prev) => {
+      const existingIdx = prev.findIndex(
+        (g) => g.sheetId === activeSheetId && g.year === goalData.year && g.month === goalData.month
+      );
+      if (existingIdx >= 0) {
+        const updated = [...prev];
+        updated[existingIdx] = {
+          ...updated[existingIdx],
+          ...goalData,
+        };
+        return updated;
+      }
+      return [
+        ...prev,
+        {
+          ...goalData,
+          id: `exp-goal-${Date.now()}`,
+          sheetId: activeSheetId,
+        },
+      ];
+    });
+    showToast('Meta de Gastos Salva', 'Valores orçados atualizados com sucesso.', 'success');
+  };
+
+  // Sheet Start Date
+  const updateSheetStartDate = (sheetId: string, startDate: string) => {
+    setSheets((prev) =>
+      prev.map((s) => (s.id === sheetId ? { ...s, startDate, updatedAt: new Date().toISOString() } : s))
+    );
+    showToast('Data Inicial Salva', `Controle iniciado em ${startDate}.`, 'success');
   };
 
   // Bank real-time Open Finance sync
@@ -883,6 +1349,39 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       sheetId: newSheetId,
     }));
 
+    // Duplicate clients, suppliers, projects, documents, custom items, payment methods, revenue & expense goals
+    const newClients = clients
+      .filter((c) => c.sheetId === sheetId)
+      .map((c) => ({ ...c, id: 'cli-' + Date.now() + '-' + Math.random().toString(36).slice(2, 5), sheetId: newSheetId }));
+
+    const newSuppliers = suppliers
+      .filter((s) => s.sheetId === sheetId)
+      .map((s) => ({ ...s, id: 'sup-' + Date.now() + '-' + Math.random().toString(36).slice(2, 5), sheetId: newSheetId }));
+
+    const newProjects = projects
+      .filter((p) => p.sheetId === sheetId)
+      .map((p) => ({ ...p, id: 'prj-' + Date.now() + '-' + Math.random().toString(36).slice(2, 5), sheetId: newSheetId }));
+
+    const newDocuments = documents
+      .filter((d) => d.sheetId === sheetId)
+      .map((d) => ({ ...d, id: 'doc-' + Date.now() + '-' + Math.random().toString(36).slice(2, 5), sheetId: newSheetId }));
+
+    const newCustomItems = customCategoryItems
+      .filter((ci) => ci.sheetId === sheetId)
+      .map((ci) => ({ ...ci, id: 'ci-' + Date.now() + '-' + Math.random().toString(36).slice(2, 5), sheetId: newSheetId }));
+
+    const newPaymentMethods = paymentMethodItems
+      .filter((pm) => pm.sheetId === sheetId)
+      .map((pm) => ({ ...pm, id: 'pm-' + Date.now() + '-' + Math.random().toString(36).slice(2, 5), sheetId: newSheetId }));
+
+    const newRevGoals = revenueGoals
+      .filter((rg) => rg.sheetId === sheetId)
+      .map((rg) => ({ ...rg, id: 'rg-' + Date.now() + '-' + Math.random().toString(36).slice(2, 5), sheetId: newSheetId }));
+
+    const newExpGoals = expenseGoals
+      .filter((eg) => eg.sheetId === sheetId)
+      .map((eg) => ({ ...eg, id: 'eg-' + Date.now() + '-' + Math.random().toString(36).slice(2, 5), sheetId: newSheetId }));
+
     // Duplicate price analyses
     const sourcePriceAnalyses = priceAnalyses.filter((p) => p.sheetId === sheetId);
     const newPriceAnalyses = sourcePriceAnalyses.map((p) => ({
@@ -896,6 +1395,14 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setCategories((prev) => [...prev, ...newCategories]);
     setTransactions((prev) => [...prev, ...newTransactions]);
     setGoals((prev) => [...prev, ...newGoals]);
+    setClients((prev) => [...prev, ...newClients]);
+    setSuppliers((prev) => [...prev, ...newSuppliers]);
+    setProjects((prev) => [...prev, ...newProjects]);
+    setDocuments((prev) => [...prev, ...newDocuments]);
+    setCustomCategoryItems((prev) => [...prev, ...newCustomItems]);
+    setPaymentMethodItems((prev) => [...prev, ...newPaymentMethods]);
+    setRevenueGoals((prev) => [...prev, ...newRevGoals]);
+    setExpenseGoals((prev) => [...prev, ...newExpGoals]);
     setPriceAnalyses((prev) => [...prev, ...newPriceAnalyses]);
     setActiveSheetIdState(newSheetId);
 
@@ -931,6 +1438,14 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setCategories((prev) => prev.filter((c) => c.sheetId !== sheetId));
     setTransactions((prev) => prev.filter((t) => t.sheetId !== sheetId));
     setGoals((prev) => prev.filter((g) => g.sheetId !== sheetId));
+    setClients((prev) => prev.filter((c) => c.sheetId !== sheetId));
+    setSuppliers((prev) => prev.filter((s) => s.sheetId !== sheetId));
+    setProjects((prev) => prev.filter((p) => p.sheetId !== sheetId));
+    setDocuments((prev) => prev.filter((d) => d.sheetId !== sheetId));
+    setCustomCategoryItems((prev) => prev.filter((i) => i.sheetId !== sheetId));
+    setPaymentMethodItems((prev) => prev.filter((m) => m.sheetId !== sheetId));
+    setRevenueGoals((prev) => prev.filter((rg) => rg.sheetId !== sheetId));
+    setExpenseGoals((prev) => prev.filter((eg) => eg.sheetId !== sheetId));
     setPriceAnalyses((prev) => prev.filter((p) => p.sheetId !== sheetId));
 
     if (activeSheetId === sheetId) {
@@ -1099,7 +1614,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const exportAllDataJSON = (): string => {
     const backupData = {
-      version: '2.0.0',
+      version: '3.0.0',
       exportedAt: new Date().toISOString(),
       appName: 'Finance GL Pro',
       vendor: 'GL Studios',
@@ -1109,6 +1624,14 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       categories,
       transactions,
       goals,
+      clients,
+      suppliers,
+      projects,
+      documents,
+      customCategoryItems,
+      paymentMethodItems,
+      revenueGoals,
+      expenseGoals,
       priceAnalyses,
     };
     return JSON.stringify(backupData, null, 2);
@@ -1138,6 +1661,14 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setCategories(parsed.categories || INITIAL_CATEGORIES);
       setTransactions(parsed.transactions || []);
       setGoals(parsed.goals || []);
+      if (parsed.clients) setClients(parsed.clients);
+      if (parsed.suppliers) setSuppliers(parsed.suppliers);
+      if (parsed.projects) setProjects(parsed.projects);
+      if (parsed.documents) setDocuments(parsed.documents);
+      if (parsed.customCategoryItems) setCustomCategoryItems(parsed.customCategoryItems);
+      if (parsed.paymentMethodItems) setPaymentMethodItems(parsed.paymentMethodItems);
+      if (parsed.revenueGoals) setRevenueGoals(parsed.revenueGoals);
+      if (parsed.expenseGoals) setExpenseGoals(parsed.expenseGoals);
       setPriceAnalyses(parsed.priceAnalyses || []);
       if (parsed.userProfile) setUserProfile(parsed.userProfile);
       if (parsed.sheets[0]) setActiveSheetIdState(parsed.sheets[0].id);
@@ -1165,6 +1696,15 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         categories,
         transactions,
         goals,
+        clients,
+        suppliers,
+        projects,
+        documents,
+        customCategoryItems,
+        paymentMethodItems,
+        revenueGoals,
+        expenseGoals,
+        selectedYear,
         priceAnalyses,
         userProfile,
         activeTab,
@@ -1178,10 +1718,13 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         unreadNotificationCount,
         toasts,
         globalSearchOpen,
+        isGlobalSearchOpen: globalSearchOpen,
         transactionModalOpen,
+        isTransactionModalOpen: transactionModalOpen,
         transactionModalType,
         editingTransaction,
         transferModalOpen,
+        isTransferModalOpen: transferModalOpen,
         isOnboardingOpen: onboardingOpen,
         onboardingOpen,
 
@@ -1189,6 +1732,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setPeriodFilter,
         setCustomDateRange,
         setActiveSheetId,
+        setSelectedYear,
         setGlobalSearchOpen,
         setTransferModalOpen,
         setOnboardingOpen,
@@ -1214,6 +1758,35 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         addCategory,
         updateCategory,
         deleteCategory,
+
+        addClient,
+        updateClient,
+        deleteClient,
+
+        addSupplier,
+        updateSupplier,
+        deleteSupplier,
+
+        addProject,
+        updateProject,
+        deleteProject,
+
+        addDocument,
+        updateDocument,
+        deleteDocument,
+
+        updateCategoryItemName,
+        addCategoryItem,
+        deleteCategoryItem,
+        resetCategoryItemsToDefault,
+
+        updatePaymentMethodName,
+        addPaymentMethod,
+        deletePaymentMethod,
+
+        saveMonthlyRevenueGoal,
+        saveMonthlyExpenseGoal,
+        updateSheetStartDate,
 
         addGoal,
         updateGoal,
@@ -1246,6 +1819,14 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         sheetAccounts,
         sheetCategories,
         sheetGoals,
+        sheetClients,
+        sheetSuppliers,
+        sheetProjects,
+        sheetDocuments,
+        sheetCategoryItems,
+        sheetPaymentMethods,
+        sheetRevenueGoals,
+        sheetExpenseGoals,
         sheetPriceAnalyses,
         totalBalance,
         totalPeriodIncome,

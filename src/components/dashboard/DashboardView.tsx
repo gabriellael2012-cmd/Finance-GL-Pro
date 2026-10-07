@@ -38,6 +38,8 @@ import {
 import { useFinance } from '../../context/FinanceContext';
 import { PeriodFilter } from '../../types';
 import { formatBRL, formatPercent, formatDate, getPaymentMethodLabel, getStatusDetails } from '../../utils/formatters';
+import { AnimatedNumber } from '../ui/AnimatedNumber';
+import { GL3DVisualizer } from './GL3DVisualizer';
 
 const PIE_COLORS = [
   '#3B82F6', // Blue
@@ -309,7 +311,7 @@ export const DashboardView: React.FC = () => {
             </div>
           </div>
           <div className="font-display text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-            {formatBRL(totalBalance)}
+            <AnimatedNumber value={totalBalance} />
           </div>
           <div className="mt-2.5 flex items-center gap-2 text-[11px] text-slate-400">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
@@ -333,7 +335,7 @@ export const DashboardView: React.FC = () => {
             </div>
           </div>
           <div className="font-display text-2xl sm:text-3xl font-extrabold text-emerald-400 tracking-tight">
-            {formatBRL(totalPeriodIncome)}
+            <AnimatedNumber value={totalPeriodIncome} />
           </div>
           <div className="mt-2.5 flex items-center gap-1.5 text-[11px]">
             <span
@@ -367,7 +369,7 @@ export const DashboardView: React.FC = () => {
             </div>
           </div>
           <div className="font-display text-2xl sm:text-3xl font-extrabold text-rose-400 tracking-tight">
-            {formatBRL(totalPeriodExpense)}
+            <AnimatedNumber value={totalPeriodExpense} />
           </div>
           <div className="mt-2.5 flex items-center gap-1.5 text-[11px]">
             <span
@@ -405,7 +407,7 @@ export const DashboardView: React.FC = () => {
               netPeriodResult >= 0 ? 'text-blue-400' : 'text-rose-400'
             }`}
           >
-            {formatBRL(netPeriodResult)}
+            <AnimatedNumber value={netPeriodResult} />
           </div>
           <div className="mt-2.5 flex items-center gap-1.5 text-[11px]">
             <span
@@ -692,69 +694,74 @@ export const DashboardView: React.FC = () => {
 
       {/* Bottom Grid: Accounts Widget & Recent Transactions */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Col: Accounts & Open Finance Live Feed */}
-        <div className="p-5 sm:p-6 rounded-2xl bg-slate-900/90 border border-slate-800/80 shadow-xl space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="font-display font-bold text-base text-white">Minhas Contas</h3>
-              <p className="text-xs text-slate-400">Saldos atualizados em tempo real</p>
-            </div>
-            <button
-              onClick={() => setActiveTab('accounts')}
-              className="text-xs font-semibold text-blue-400 hover:text-blue-300 transition-colors"
-            >
-              Ver todas
-            </button>
-          </div>
-
-          <div className="space-y-2.5">
-            {sheetAccounts.map((acc) => (
-              <div
-                key={acc.id}
-                className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/60 hover:border-slate-700 transition-all flex items-center justify-between"
+        {/* Left Col: Accounts & Open Finance Live Feed + 3D Visualizer */}
+        <div className="space-y-6">
+          <div className="p-5 sm:p-6 rounded-2xl bg-slate-900/90 border border-slate-800/80 shadow-xl space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-display font-bold text-base text-white">Minhas Contas</h3>
+                <p className="text-xs text-slate-400">Saldos atualizados em tempo real</p>
+              </div>
+              <button
+                onClick={() => setActiveTab('accounts')}
+                className="text-xs font-semibold text-blue-400 hover:text-blue-300 transition-colors"
               >
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-3 h-8 rounded-md shrink-0"
-                    style={{ backgroundColor: acc.color || '#3B82F6' }}
-                  />
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-semibold text-xs text-white">{acc.name}</span>
-                      {acc.isBankConnected && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
-                      )}
+                Ver todas
+              </button>
+            </div>
+
+            <div className="space-y-2.5">
+              {sheetAccounts.map((acc) => (
+                <div
+                  key={acc.id}
+                  className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/60 hover:border-slate-700 transition-all flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-3 h-8 rounded-md shrink-0"
+                      style={{ backgroundColor: acc.color || '#3B82F6' }}
+                    />
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-semibold text-xs text-white">{acc.name}</span>
+                        {acc.isBankConnected && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                        )}
+                      </div>
+                      <span className="text-[10px] text-slate-400 font-mono">
+                        {acc.bankName || 'Conta Bancária'}
+                      </span>
                     </div>
-                    <span className="text-[10px] text-slate-400 font-mono">
-                      {acc.bankName || 'Conta Bancária'}
-                    </span>
                   </div>
+                  <span className="font-display font-bold text-xs text-slate-100 font-mono">
+                    {formatBRL(acc.currentBalance)}
+                  </span>
                 </div>
-                <span className="font-display font-bold text-xs text-slate-100 font-mono">
-                  {formatBRL(acc.currentBalance)}
-                </span>
+              ))}
+            </div>
+
+            {/* Quick Payables Banner if there are any */}
+            {(overduePayables.length > 0 || upcomingPayables.length > 0) && (
+              <div className="p-3.5 rounded-xl bg-amber-950/20 border border-amber-800/40 flex items-start gap-2.5">
+                <Clock className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <div className="text-xs text-slate-300">
+                  <span className="font-semibold text-amber-300">Atenção às contas: </span>
+                  {overduePayables.length > 0
+                    ? `${overduePayables.length} conta(s) vencida(s)! `
+                    : `${upcomingPayables.length} conta(s) vencendo nos próximos 7 dias.`}
+                  <button
+                    onClick={() => setActiveTab('payables')}
+                    className="underline text-amber-400 ml-1 hover:text-amber-200"
+                  >
+                    Conferir
+                  </button>
+                </div>
               </div>
-            ))}
+            )}
           </div>
 
-          {/* Quick Payables Banner if there are any */}
-          {(overduePayables.length > 0 || upcomingPayables.length > 0) && (
-            <div className="p-3.5 rounded-xl bg-amber-950/20 border border-amber-800/40 flex items-start gap-2.5">
-              <Clock className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-              <div className="text-xs text-slate-300">
-                <span className="font-semibold text-amber-300">Atenção às contas: </span>
-                {overduePayables.length > 0
-                  ? `${overduePayables.length} conta(s) vencida(s)! `
-                  : `${upcomingPayables.length} conta(s) vencendo nos próximos 7 dias.`}
-                <button
-                  onClick={() => setActiveTab('payables')}
-                  className="underline text-amber-400 ml-1 hover:text-amber-200"
-                >
-                  Conferir
-                </button>
-              </div>
-            </div>
-          )}
+          {/* Abstract 3D GL Node Visualizer (Discrete financial geometry) */}
+          <GL3DVisualizer />
         </div>
 
         {/* Right 2 Cols: Recent Transactions Table */}

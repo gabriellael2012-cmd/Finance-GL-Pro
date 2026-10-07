@@ -12,6 +12,8 @@ export const formatBRL = (value: number | undefined | null): string => {
   }).format(value);
 };
 
+export const formatCurrency = formatBRL;
+
 export const formatCompactBRL = (value: number): string => {
   if (Math.abs(value) >= 1_000_000) {
     return `R$ ${(value / 1_000_000).toFixed(1).replace('.', ',')}M`;
@@ -36,6 +38,8 @@ export const formatDate = (dateString?: string): string => {
     return dateString;
   }
 };
+
+export const formatDateBR = formatDate;
 
 export const formatDateShort = (dateString?: string): string => {
   if (!dateString) return '-';

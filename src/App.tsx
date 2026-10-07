@@ -12,6 +12,10 @@ import { ChartOfAccountsView } from './components/chartofaccounts/ChartOfAccount
 import { AccountsView } from './components/accounts/AccountsView';
 import { SavedSheetsView } from './components/sheets/SavedSheetsView';
 import { GoalsView } from './components/goals/GoalsView';
+import { RevenueGoalsView } from './components/goals/RevenueGoalsView';
+import { ExpenseGoalsView } from './components/goals/ExpenseGoalsView';
+import { InitialBalancesView } from './components/initialbalances/InitialBalancesView';
+import { RegistrationsView } from './components/registrations/RegistrationsView';
 import { DatabaseView } from './components/database/DatabaseView';
 import { HelpCenterView } from './components/help/HelpCenterView';
 import { SettingsView } from './components/settings/SettingsView';
@@ -20,6 +24,7 @@ import { TransactionModal } from './components/modals/TransactionModal';
 import { TransferModal } from './components/modals/TransferModal';
 import { GlobalSearchModal } from './components/modals/GlobalSearchModal';
 import { OnboardingModal } from './components/onboarding/OnboardingModal';
+import { ToastContainer } from './components/layout/ToastContainer';
 
 const AppContent: React.FC = () => {
   const { activeTab } = useFinance();
@@ -29,6 +34,27 @@ const AppContent: React.FC = () => {
     switch (activeTab) {
       case 'dashboard':
         return <DashboardView />;
+      case 'initial_balances':
+        return <InitialBalancesView />;
+      case 'registrations':
+        return <RegistrationsView initialSubTab="income_types" />;
+      case 'income_types':
+        return <RegistrationsView initialSubTab="income_types" />;
+      case 'expense_types':
+        return <RegistrationsView initialSubTab="expense_types" />;
+      case 'income_methods':
+      case 'expense_methods':
+        return <RegistrationsView initialSubTab="payment_methods" />;
+      case 'clients':
+        return <RegistrationsView initialSubTab="clients" />;
+      case 'suppliers':
+        return <RegistrationsView initialSubTab="suppliers" />;
+      case 'projects_docs':
+        return <RegistrationsView initialSubTab="projects_docs" />;
+      case 'revenue_goals':
+        return <RevenueGoalsView />;
+      case 'expense_goals':
+        return <ExpenseGoalsView />;
       case 'cash_flow':
         return <CashFlowView />;
       case 'income':
@@ -98,7 +124,12 @@ const AppContent: React.FC = () => {
         />
 
         <main className="flex-1 p-3 sm:p-5 lg:p-7 w-full max-w-7xl mx-auto">
-          {renderActiveView()}
+          <div
+            key={activeTab}
+            className="w-full transition-all duration-300 animate-in fade-in slide-in-from-bottom-2"
+          >
+            {renderActiveView()}
+          </div>
         </main>
       </div>
 
@@ -107,6 +138,7 @@ const AppContent: React.FC = () => {
       <TransferModal />
       <GlobalSearchModal />
       <OnboardingModal />
+      <ToastContainer />
     </div>
   );
 };

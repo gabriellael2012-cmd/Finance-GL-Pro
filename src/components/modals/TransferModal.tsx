@@ -10,11 +10,14 @@ import { useFinance } from '../../context/FinanceContext';
 
 export const TransferModal: React.FC = () => {
   const {
+    transferModalOpen,
     isTransferModalOpen,
     setTransferModalOpen,
     sheetAccounts,
     transferBetweenAccounts,
   } = useFinance();
+
+  const isOpen = transferModalOpen ?? isTransferModalOpen ?? false;
 
   const [fromAccountId, setFromAccountId] = useState<string>(sheetAccounts[0]?.id || '');
   const [toAccountId, setToAccountId] = useState<string>(sheetAccounts[1]?.id || sheetAccounts[0]?.id || '');
@@ -23,7 +26,20 @@ export const TransferModal: React.FC = () => {
   const [description, setDescription] = useState<string>('Transferência entre contas');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  if (!isTransferModalOpen) return null;
+  React.useEffect(() => {
+    if (isOpen && sheetAccounts.length > 0) {
+      const validFrom = sheetAccounts.some((a) => a.id === fromAccountId)
+        ? fromAccountId
+        : sheetAccounts[0].id;
+      setFromAccountId(validFrom);
+
+      const remaining = sheetAccounts.filter((a) => a.id !== validFrom);
+      const validTo = remaining.length > 0 ? remaining[0].id : validFrom;
+      setToAccountId(validTo);
+    }
+  }, [isOpen, sheetAccounts]);
+
+  if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

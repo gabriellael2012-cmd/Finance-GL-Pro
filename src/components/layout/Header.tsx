@@ -23,8 +23,39 @@ interface HeaderProps {
   isMenuOpen?: boolean;
 }
 
+const TAB_TITLES: Record<string, string> = {
+  dashboard: 'Dashboard',
+  initial_balances: 'Saldos Iniciais',
+  cash_flow: 'Fluxo de Caixa',
+  income: 'Receitas',
+  expenses: 'Despesas',
+  transfers: 'Transferências',
+  payables: 'Contas a Pagar',
+  receivables: 'Contas a Receber',
+  registrations: 'Central de Cadastros',
+  income_types: 'Tipos de Receitas',
+  expense_types: 'Tipos de Despesas',
+  income_methods: 'Meios de Pagamento & Recebimento',
+  expense_methods: 'Meios de Pagamento & Recebimento',
+  clients: 'Cadastro de Clientes',
+  suppliers: 'Cadastro de Fornecedores',
+  projects_docs: 'Projetos & Documentos',
+  revenue_goals: 'Metas de Receitas',
+  expense_goals: 'Metas de Gastos',
+  reports: 'Relatórios',
+  chart_of_accounts: 'Plano de Contas',
+  accounts: 'Contas & Bancos',
+  sheets: 'Minhas Planilhas',
+  price_ai: 'Assistente de Preços',
+  goals: 'Metas Financeiras',
+  database: 'Base de Dados',
+  help: 'Ajuda & Tutorial',
+  settings: 'Configurações',
+};
+
 export const Header: React.FC<HeaderProps> = ({ onToggleMenu, isMenuOpen = false }) => {
   const {
+    activeTab,
     openTransactionModal,
     setTransferModalOpen,
     setActiveTab,
@@ -40,6 +71,8 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMenu, isMenuOpen = false
     sheets,
     activeSheetId,
     setActiveSheetId,
+    selectedYear,
+    setSelectedYear,
   } = useFinance();
 
   const [notificationsOpen, setNotificationsOpen] = useState<boolean>(false);
@@ -86,6 +119,12 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMenu, isMenuOpen = false
             <Logo size="md" showProductTag={true} />
           </div>
 
+          <div className="hidden xl:flex items-center pl-3 border-l border-slate-800">
+            <span className="text-xs font-bold text-slate-200 tracking-wide font-display">
+              {TAB_TITLES[activeTab] || 'Dashboard'}
+            </span>
+          </div>
+
           <button
             id="global-search-trigger-desktop"
             onClick={() => setGlobalSearchOpen(true)}
@@ -99,8 +138,26 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMenu, isMenuOpen = false
           </button>
         </div>
 
-        {/* Center Zone: Independent "Planilha atual" Switcher Pill */}
-        <div className="relative shrink-0 flex items-center justify-center">
+        {/* Center Zone: Independent "Planilha atual" Switcher Pill & Ano Fiscal */}
+        <div className="relative shrink-0 flex items-center justify-center gap-2">
+          {/* Quick Year Selector Pill */}
+          <div className="flex items-center p-1 rounded-xl bg-slate-900 border border-slate-800 text-xs shadow-xs">
+            {[2025, 2026, 2027].map((yr) => (
+              <button
+                key={yr}
+                onClick={() => setSelectedYear(yr)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  selectedYear === yr
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title={`Exercício Fiscal ${yr}`}
+              >
+                {yr}
+              </button>
+            ))}
+          </div>
+
           <button
             id="btn-active-sheet-desktop"
             onClick={() => setSheetMenuOpen(!sheetMenuOpen)}
@@ -365,6 +422,12 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMenu, isMenuOpen = false
 
             <div id="header-mobile-logo" className="shrink-0">
               <Logo size="sm" showProductTag={true} />
+            </div>
+
+            <div className="hidden sm:flex items-center pl-2 border-l border-slate-800 truncate">
+              <span className="text-xs font-semibold text-slate-200 truncate">
+                {TAB_TITLES[activeTab] || 'Dashboard'}
+              </span>
             </div>
           </div>
 
