@@ -20,19 +20,28 @@ export const PayablesView: React.FC = () => {
     sheetTransactions,
     sheetCategories,
     sheetAccounts,
+    selectedYear,
     quickPayBill,
     openTransactionModal,
   } = useFinance();
 
   const [activeFilter, setActiveFilter] = useState<PayableFilter>('all');
+  const [yearScope, setYearScope] = useState<'selected' | 'all'>('selected');
 
   const todayStr = new Date().toISOString().slice(0, 10);
   const next7DaysStr = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const next30DaysStr = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
+  // Scoped transactions
+  const scopedTransactions = useMemo(() => {
+    if (yearScope === 'all') return sheetTransactions;
+    const yrStr = String(selectedYear);
+    return sheetTransactions.filter((t) => (t.dueDate || t.date).startsWith(yrStr));
+  }, [sheetTransactions, yearScope, selectedYear]);
+
   // Filtered Payables
   const payablesList = useMemo(() => {
-    return sheetTransactions
+    return scopedTransactions
       .filter((t) => t.type === 'expense')
       .filter((t) => {
         const due = t.dueDate || t.date;
@@ -57,26 +66,26 @@ export const PayablesView: React.FC = () => {
         const dueB = b.dueDate || b.date;
         return dueA.localeCompare(dueB);
       });
-  }, [sheetTransactions, activeFilter, todayStr, next7DaysStr, next30DaysStr]);
+  }, [scopedTransactions, activeFilter, todayStr, next7DaysStr, next30DaysStr]);
 
   // Totals
   const pendingTotal = useMemo(() => {
-    return sheetTransactions
+    return scopedTransactions
       .filter((t) => t.type === 'expense' && (t.status === 'pending' || t.status === 'scheduled'))
       .reduce((sum, t) => sum + t.amount, 0);
-  }, [sheetTransactions]);
+  }, [scopedTransactions]);
 
   const overdueTotal = useMemo(() => {
-    return sheetTransactions
+    return scopedTransactions
       .filter((t) => t.type === 'expense' && (t.status === 'overdue' || (t.status === 'pending' && (t.dueDate || t.date) < todayStr)))
       .reduce((sum, t) => sum + t.amount, 0);
-  }, [sheetTransactions, todayStr]);
+  }, [scopedTransactions, todayStr]);
 
   const paidTotal = useMemo(() => {
-    return sheetTransactions
+    return scopedTransactions
       .filter((t) => t.type === 'expense' && t.status === 'completed')
       .reduce((sum, t) => sum + t.amount, 0);
-  }, [sheetTransactions]);
+  }, [scopedTransactions]);
 
   return (
     <div id="payables-view" className="space-y-6 max-w-7xl mx-auto pb-12">
@@ -91,13 +100,40 @@ export const PayablesView: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={() => openTransactionModal('expense')}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold shadow-md shadow-rose-950/40 transition-all self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          <span>+ Nova Despesa / Conta</span>
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="inline-flex rounded-xl bg-slate-900 p-1 border border-slate-800 text-xs">
+            <button
+              type="button"
+              onClick={() => setYearScope('selected')}
+              className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+                yearScope === 'selected'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Ano {selectedYear}
+            </button>
+            <button
+              type="button"
+              onClick={() => setYearScope('all')}
+              className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer ${
+                yearScope === 'all'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Todos os Anos
+            </button>
+          </div>
+
+          <button
+            onClick={() => openTransactionModal('expense')}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold shadow-md shadow-rose-950/40 transition-all self-start sm:self-auto cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>+ Nova Despesa / Conta</span>
+          </button>
+        </div>
       </div>
 
       {/* KPI Stats */}

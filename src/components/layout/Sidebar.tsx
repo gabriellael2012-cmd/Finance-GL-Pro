@@ -27,6 +27,7 @@ import {
   Briefcase,
   TrendingUp,
   TrendingDown,
+  Calculator,
 } from 'lucide-react';
 import { useFinance } from '../../context/FinanceContext';
 import { NavigationTab } from '../../types';
@@ -487,18 +488,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </span>
           </button>
 
-          {/* IA de Preços / Assistente de Preços */}
+          {/* Assistente Financeiro de Preços */}
           <button
-            id="nav-price-ai"
+            id="nav-price-assistant"
             onClick={() => handleNavClick('price_ai')}
             className={navItemClass('price_ai')}
           >
             <div className="flex items-center gap-3">
-              <Sparkles className="w-4 h-4 text-blue-400" />
+              <Calculator className="w-4 h-4 text-blue-400" />
               <span>Assistente de Preços</span>
             </div>
-            <span className="text-[10px] uppercase font-bold text-blue-400 bg-blue-950/60 px-1.5 py-0.5 rounded border border-blue-800/40">
-              IA
+            <span className="text-[10px] uppercase font-bold text-slate-400 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800">
+              PRO
             </span>
           </button>
 

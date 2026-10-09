@@ -73,6 +73,7 @@ export const DashboardView: React.FC = () => {
     sheetTransactions,
     sheetAccounts,
     sheetCategories,
+    selectedYear,
     upcomingPayables,
     overduePayables,
     openTransactionModal,
@@ -98,58 +99,55 @@ export const DashboardView: React.FC = () => {
     { id: 'custom', label: 'Personalizado' },
   ];
 
-  // Prepare monthly aggregated data for charts from all transactions in the current sheet
+  // Prepare monthly aggregated data for charts for the selected fiscal year (Jan to Dez)
   const monthlyChartData = useMemo(() => {
-    const monthMap: Record<string, { month: string; income: number; expense: number; balance: number; net: number }> = {};
-    
-    // Sort transactions chronologically
-    const sorted = [...sheetTransactions].sort((a, b) => a.date.localeCompare(b.date));
-    
-    let rollingBalance = sheetAccounts.reduce((acc, a) => acc + a.initialBalance, 0);
+    const yrStr = String(selectedYear);
+    const yrStart = `${yrStr}-01-01`;
 
-    sorted.forEach((tx) => {
-      if (tx.status === 'overdue' && tx.type === 'expense') return;
-      const monthKey = tx.date.slice(0, 7); // YYYY-MM
-      
-      if (!monthMap[monthKey]) {
-        const [year, monthNum] = monthKey.split('-');
-        const dateObj = new Date(parseInt(year), parseInt(monthNum) - 1, 1);
-        const label = dateObj.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
-        monthMap[monthKey] = { month: label, income: 0, expense: 0, balance: 0, net: 0 };
-      }
+    // Calculate opening balance at the start of selectedYear based on accounts initial balances + prior completed transactions
+    const baseInitial = sheetAccounts.reduce((acc, a) => acc + a.initialBalance, 0);
+    const priorInflows = sheetTransactions
+      .filter((t) => t.date < yrStart && t.type === 'income' && t.status === 'completed')
+      .reduce((s, t) => s + t.amount, 0);
+    const priorOutflows = sheetTransactions
+      .filter((t) => t.date < yrStart && t.type === 'expense' && t.status === 'completed')
+      .reduce((s, t) => s + t.amount, 0);
+    let rollingBalance = baseInitial + priorInflows - priorOutflows;
 
-      if (tx.type === 'income' && tx.status === 'completed') {
-        monthMap[monthKey].income += tx.amount;
-        rollingBalance += tx.amount;
-      } else if (tx.type === 'expense' && tx.status === 'completed') {
-        monthMap[monthKey].expense += tx.amount;
-        rollingBalance -= tx.amount;
-      }
-      monthMap[monthKey].net = monthMap[monthKey].income - monthMap[monthKey].expense;
-      monthMap[monthKey].balance = rollingBalance;
+    const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    const months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
+
+    // Map year transactions by month
+    const yearTxs = sheetTransactions.filter(
+      (tx) => tx.date.startsWith(yrStr) && tx.status === 'completed'
+    );
+
+    const monthMap: Record<string, { income: number; expense: number }> = {};
+    months.forEach((m) => {
+      monthMap[m] = { income: 0, expense: 0 };
     });
 
-    const data = Object.values(monthMap);
-    if (data.length > 0) {
-      return data;
-    }
+    yearTxs.forEach((tx) => {
+      const m = tx.date.slice(5, 7);
+      if (monthMap[m]) {
+        if (tx.type === 'income') monthMap[m].income += tx.amount;
+        if (tx.type === 'expense') monthMap[m].expense += tx.amount;
+      }
+    });
 
-    // Default neutral months with zero values when no transactions exist yet
-    const now = new Date();
-    const zeroMonths = [];
-    for (let i = 3; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const label = d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
-      zeroMonths.push({
-        month: label,
-        income: 0,
-        expense: 0,
+    return months.map((m, idx) => {
+      const { income, expense } = monthMap[m];
+      const net = income - expense;
+      rollingBalance += net;
+      return {
+        month: `${monthNames[idx]}/${yrStr.slice(2)}`,
+        income,
+        expense,
+        net,
         balance: rollingBalance,
-        net: 0,
-      });
-    }
-    return zeroMonths;
-  }, [sheetTransactions, sheetAccounts]);
+      };
+    });
+  }, [sheetTransactions, sheetAccounts, selectedYear]);
 
   // Expenses Category breakdown data for Pie Chart
   const categoryExpensesData = useMemo(() => {
@@ -171,12 +169,13 @@ export const DashboardView: React.FC = () => {
     return Object.values(catMap).sort((a, b) => b.value - a.value);
   }, [filteredTransactions, sheetCategories]);
 
-  // Recent transactions list
+  // Recent transactions list for selectedYear
   const recentTransactions = useMemo(() => {
     return [...sheetTransactions]
+      .filter((t) => t.date.startsWith(String(selectedYear)))
       .sort((a, b) => b.date.localeCompare(a.date))
       .slice(0, 7);
-  }, [sheetTransactions]);
+  }, [sheetTransactions, selectedYear]);
 
   const handleApplyCustomRange = () => {
     if (tempStart && tempEnd) {

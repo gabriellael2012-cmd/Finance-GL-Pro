@@ -208,6 +208,7 @@ interface FinanceContextType {
 
   // Computed Values for Current Period & Sheet
   sheetTransactions: Transaction[];
+  yearTransactions: Transaction[];
   filteredTransactions: Transaction[];
   sheetAccounts: Account[];
   sheetCategories: Category[];
@@ -386,7 +387,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // UI state
   const [activeTab, setActiveTab] = useState<NavigationTab>('dashboard');
-  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('this_month');
+  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('this_year');
   const today = new Date();
   const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
   const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().slice(0, 10);
@@ -599,9 +600,15 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return expenseGoals.filter((g) => g.sheetId === activeSheetId && g.year === selectedYear);
   }, [expenseGoals, activeSheetId, selectedYear]);
 
+  // All transactions of the current sheet for the selectedYear
+  const yearTransactions = useMemo(() => {
+    const yrPrefix = String(selectedYear);
+    return sheetTransactions.filter((tx) => tx.date.startsWith(yrPrefix));
+  }, [sheetTransactions, selectedYear]);
+
   const periodDateRange = useMemo(() => {
-    return getPeriodDates(periodFilter, customStartDate, customEndDate);
-  }, [periodFilter, customStartDate, customEndDate]);
+    return getPeriodDates(periodFilter, customStartDate, customEndDate, selectedYear);
+  }, [periodFilter, customStartDate, customEndDate, selectedYear]);
 
   // Filtered transactions for the selected period
   const filteredTransactions = useMemo(() => {
@@ -1815,6 +1822,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         importDataJSON,
 
         sheetTransactions,
+        yearTransactions,
         filteredTransactions,
         sheetAccounts,
         sheetCategories,

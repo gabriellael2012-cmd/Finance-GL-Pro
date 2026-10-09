@@ -24,43 +24,54 @@ import {
 } from 'recharts';
 import { useFinance } from '../../context/FinanceContext';
 import { formatBRL, formatDate, formatMonthYear } from '../../utils/formatters';
+import { CompactYearSelector } from '../common/CompactYearSelector';
 
 export const CashFlowView: React.FC = () => {
   const {
     sheetTransactions,
     sheetAccounts,
+    selectedYear,
     openTransactionModal,
     setTransferModalOpen,
   } = useFinance();
 
   const [granularity, setGranularity] = useState<'daily' | 'weekly' | 'monthly'>('monthly');
-  const [selectedYear, setSelectedYear] = useState<string>('2026');
 
-  // Overall cash balance summary
-  const initialTotalBalance = useMemo(() => {
-    return sheetAccounts.reduce((acc, a) => acc + a.initialBalance, 0);
-  }, [sheetAccounts]);
+  const yrStr = String(selectedYear);
+  const yrStart = `${yrStr}-01-01`;
+
+  // Saldo de Abertura do Exercício (initial balances + prior completed transactions)
+  const yrOpeningBalance = useMemo(() => {
+    const baseInitial = sheetAccounts.reduce((acc, a) => acc + a.initialBalance, 0);
+    const priorInflows = sheetTransactions
+      .filter((t) => t.date < yrStart && t.type === 'income' && t.status === 'completed')
+      .reduce((s, t) => s + t.amount, 0);
+    const priorOutflows = sheetTransactions
+      .filter((t) => t.date < yrStart && t.type === 'expense' && t.status === 'completed')
+      .reduce((s, t) => s + t.amount, 0);
+    return baseInitial + priorInflows - priorOutflows;
+  }, [sheetAccounts, sheetTransactions, yrStart]);
 
   const totalInflows = useMemo(() => {
     return sheetTransactions
-      .filter((t) => t.type === 'income' && t.status === 'completed')
+      .filter((t) => t.date.startsWith(yrStr) && t.type === 'income' && t.status === 'completed')
       .reduce((sum, t) => sum + t.amount, 0);
-  }, [sheetTransactions]);
+  }, [sheetTransactions, yrStr]);
 
   const totalOutflows = useMemo(() => {
     return sheetTransactions
-      .filter((t) => t.type === 'expense' && t.status === 'completed')
+      .filter((t) => t.date.startsWith(yrStr) && t.type === 'expense' && t.status === 'completed')
       .reduce((sum, t) => sum + t.amount, 0);
-  }, [sheetTransactions]);
+  }, [sheetTransactions, yrStr]);
 
   const totalTransfers = useMemo(() => {
     return sheetTransactions
-      .filter((t) => t.type === 'transfer' && t.status === 'completed')
+      .filter((t) => t.date.startsWith(yrStr) && t.type === 'transfer' && t.status === 'completed')
       .reduce((sum, t) => sum + t.amount, 0);
-  }, [sheetTransactions]);
+  }, [sheetTransactions, yrStr]);
 
   const netCashResult = totalInflows - totalOutflows;
-  const finalCalculatedBalance = initialTotalBalance + netCashResult;
+  const finalCalculatedBalance = yrOpeningBalance + netCashResult;
 
   // Granular Cash Flow Aggregation (Daily, Weekly, Monthly)
   const cashFlowTimeline = useMemo(() => {
@@ -68,7 +79,7 @@ export const CashFlowView: React.FC = () => {
 
     // Group sorted transactions
     const sorted = [...sheetTransactions]
-      .filter((t) => t.date.startsWith(selectedYear) && t.status === 'completed')
+      .filter((t) => t.date.startsWith(yrStr) && t.status === 'completed')
       .sort((a, b) => a.date.localeCompare(b.date));
 
     if (granularity === 'monthly') {
@@ -76,10 +87,10 @@ export const CashFlowView: React.FC = () => {
       const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
       months.forEach((m, idx) => {
-        const key = `${selectedYear}-${m}`;
+        const key = `${yrStr}-${m}`;
         timeMap[key] = {
           period: key,
-          label: `${monthNames[idx]}/${selectedYear.slice(2)}`,
+          label: `${monthNames[idx]}/${yrStr.slice(2)}`,
           initial: 0,
           inflows: 0,
           outflows: 0,
@@ -138,7 +149,7 @@ export const CashFlowView: React.FC = () => {
       });
     }
 
-    let running = initialTotalBalance;
+    let running = yrOpeningBalance;
     const result = Object.values(timeMap).map((item) => {
       item.initial = running;
       item.net = item.inflows - item.outflows;
@@ -148,7 +159,7 @@ export const CashFlowView: React.FC = () => {
     });
 
     return result;
-  }, [sheetTransactions, granularity, selectedYear, initialTotalBalance]);
+  }, [sheetTransactions, granularity, yrStr, yrOpeningBalance]);
 
   return (
     <div id="cash-flow-view" className="space-y-6 max-w-7xl mx-auto pb-12">
@@ -192,15 +203,7 @@ export const CashFlowView: React.FC = () => {
             </button>
           </div>
 
-          <select
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(e.target.value)}
-            aria-label="Selecionar Ano"
-            className="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white focus:border-blue-500 focus:outline-hidden"
-          >
-            <option value="2026">2026</option>
-            <option value="2025">2025</option>
-          </select>
+          <CompactYearSelector variant="inline" />
         </div>
       </div>
 
@@ -209,10 +212,10 @@ export const CashFlowView: React.FC = () => {
         {/* Saldo Inicial */}
         <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800">
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-            Saldo Inicial
+            Saldo Inicial ({selectedYear})
           </span>
           <div className="font-display font-bold text-base sm:text-lg text-slate-200 font-mono">
-            {formatBRL(initialTotalBalance)}
+            {formatBRL(yrOpeningBalance)}
           </div>
         </div>
 

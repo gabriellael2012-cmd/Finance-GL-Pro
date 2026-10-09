@@ -14,6 +14,7 @@ import {
 import { useFinance } from '../../context/FinanceContext';
 import { MonthlyRevenueGoal } from '../../types';
 import { formatCurrency } from '../../utils/formatters';
+import { CompactYearSelector } from '../common/CompactYearSelector';
 
 const MONTH_NAMES = [
   'Janeiro',
@@ -135,21 +136,7 @@ export const RevenueGoalsView: React.FC = () => {
 
           <div className="flex items-center gap-3">
             {/* Year Switcher */}
-            <div className="flex items-center p-1 rounded-xl bg-slate-950 border border-slate-800 text-xs">
-              {[2025, 2026, 2027].map((yr) => (
-                <button
-                  key={yr}
-                  onClick={() => setSelectedYear(yr)}
-                  className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
-                    selectedYear === yr
-                      ? 'bg-emerald-600 text-white shadow-xs'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  {yr}
-                </button>
-              ))}
-            </div>
+            <CompactYearSelector variant="inline" />
 
             <button
               onClick={() => setActiveTab('expense_goals')}

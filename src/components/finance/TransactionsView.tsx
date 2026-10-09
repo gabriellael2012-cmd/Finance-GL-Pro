@@ -34,6 +34,8 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
     sheetTransactions,
     sheetCategories,
     sheetAccounts,
+    selectedYear,
+    setSelectedYear,
     openTransactionModal,
     setTransferModalOpen,
     deleteTransaction,
@@ -45,6 +47,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [accountFilter, setAccountFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [yearScope, setYearScope] = useState<'selected' | 'all'>('selected');
   const [sortBy, setSortBy] = useState<'date_desc' | 'date_asc' | 'amount_desc' | 'amount_asc'>('date_desc');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
@@ -52,6 +55,8 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
   const filteredList = useMemo(() => {
     return sheetTransactions
       .filter((tx) => {
+        // Year filter
+        if (yearScope === 'selected' && !tx.date.startsWith(String(selectedYear))) return false;
         // Type filter
         if (typeFilter !== 'all' && tx.type !== typeFilter) return false;
         // Category filter
@@ -77,7 +82,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
         if (sortBy === 'amount_asc') return a.amount - b.amount;
         return 0;
       });
-  }, [sheetTransactions, typeFilter, categoryFilter, accountFilter, statusFilter, searchQuery, sortBy]);
+  }, [sheetTransactions, yearScope, selectedYear, typeFilter, categoryFilter, accountFilter, statusFilter, searchQuery, sortBy]);
 
   // Statistics for currently filtered view
   const currentTotal = useMemo(() => {
@@ -234,9 +239,36 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
           </div>
         </div>
 
-        {/* Filter stats pill */}
-        <div className="flex items-center justify-between text-xs text-slate-400 pt-1 border-t border-slate-800/60">
-          <span>{filteredList.length} lançamento(s) encontrado(s)</span>
+        {/* Filter stats pill & Year Scope */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-400 pt-1 border-t border-slate-800/60">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-slate-400">Exercício Fiscal:</span>
+            <div className="inline-flex rounded-lg bg-slate-950 p-0.5 border border-slate-800 text-[11px]">
+              <button
+                type="button"
+                onClick={() => setYearScope('selected')}
+                className={`px-2.5 py-0.5 rounded-md font-bold transition-all cursor-pointer ${
+                  yearScope === 'selected'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Ano {selectedYear}
+              </button>
+              <button
+                type="button"
+                onClick={() => setYearScope('all')}
+                className={`px-2.5 py-0.5 rounded-md font-semibold transition-all cursor-pointer ${
+                  yearScope === 'all'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Todos os Anos
+              </button>
+            </div>
+            <span className="text-[11px] text-slate-500">({filteredList.length} lançamento(s))</span>
+          </div>
           <span className="font-semibold text-slate-200">
             Total filtrado: <span className="font-mono text-blue-400">{formatBRL(currentTotal)}</span>
           </span>
@@ -247,7 +279,9 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
       <div className="p-5 sm:p-6 rounded-2xl bg-slate-900/90 border border-slate-800/80 shadow-xl overflow-hidden">
         {filteredList.length === 0 ? (
           <div className="text-center py-12 text-slate-500 text-xs">
-            Nenhum lançamento correspondente aos filtros aplicados.
+            {yearScope === 'selected'
+              ? `Nenhum lançamento registrado no exercício de ${selectedYear}. Os dados de outros anos permanecem preservados.`
+              : 'Nenhum lançamento correspondente aos filtros aplicados.'}
           </div>
         ) : (
           <div className="overflow-x-auto">

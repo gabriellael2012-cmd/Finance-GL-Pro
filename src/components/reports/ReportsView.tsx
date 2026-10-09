@@ -30,6 +30,7 @@ import {
 } from 'recharts';
 import { useFinance } from '../../context/FinanceContext';
 import { formatBRL, formatDate, formatPercent } from '../../utils/formatters';
+import { CompactYearSelector } from '../common/CompactYearSelector';
 
 type ReportType =
   | 'monthly'
@@ -48,11 +49,11 @@ export const ReportsView: React.FC = () => {
     sheetCategories,
     sheetAccounts,
     activeSheet,
+    selectedYear,
     openTransactionModal,
   } = useFinance();
 
   const [selectedReport, setSelectedReport] = useState<ReportType>('monthly');
-  const [selectedYear, setSelectedYear] = useState<string>(() => new Date().getFullYear().toString());
   const [selectedMonth, setSelectedMonth] = useState<string>(() => String(new Date().getMonth() + 1).padStart(2, '0'));
 
   // Month dataset
@@ -264,15 +265,7 @@ export const ReportsView: React.FC = () => {
             <option value="12">Dezembro</option>
           </select>
 
-          <select
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(e.target.value)}
-            aria-label="Selecionar Ano"
-            className="px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:border-blue-500 focus:outline-hidden"
-          >
-            <option value="2026">2026</option>
-            <option value="2025">2025</option>
-          </select>
+          <CompactYearSelector variant="inline" />
         </div>
       </div>
 

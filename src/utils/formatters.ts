@@ -127,15 +127,33 @@ export const getStatusDetails = (status: TransactionStatus, type: TransactionTyp
 export const getPeriodDates = (
   period: PeriodFilter,
   customStart?: string,
-  customEnd?: string
+  customEnd?: string,
+  targetYear?: number
 ): { start: string; end: string; prevStart: string; prevEnd: string; label: string } => {
   const now = new Date();
-  const todayStr = now.toISOString().slice(0, 10);
+  const yearToUse = targetYear || now.getFullYear();
+  const todayStr = targetYear && targetYear !== now.getFullYear()
+    ? `${targetYear}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+    : now.toISOString().slice(0, 10);
 
-  const toYMD = (d: Date) => d.toISOString().slice(0, 10);
+  const toYMD = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
 
   switch (period) {
     case 'today': {
+      if (targetYear && targetYear !== now.getFullYear()) {
+        return {
+          start: todayStr,
+          end: todayStr,
+          prevStart: todayStr,
+          prevEnd: todayStr,
+          label: `Dia (${yearToUse})`,
+        };
+      }
       const yesterday = new Date(now);
       yesterday.setDate(yesterday.getDate() - 1);
       return {
@@ -147,9 +165,10 @@ export const getPeriodDates = (
       };
     }
     case 'this_week': {
-      const dayOfWeek = now.getDay(); // 0 is Sunday
-      const monday = new Date(now);
-      monday.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+      const baseDate = new Date(yearToUse, now.getMonth(), now.getDate());
+      const dayOfWeek = baseDate.getDay(); // 0 is Sunday
+      const monday = new Date(baseDate);
+      monday.setDate(baseDate.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
       const sunday = new Date(monday);
       sunday.setDate(monday.getDate() + 6);
 
@@ -163,82 +182,87 @@ export const getPeriodDates = (
         end: toYMD(sunday),
         prevStart: toYMD(prevMonday),
         prevEnd: toYMD(prevSunday),
-        label: 'Esta semana',
+        label: `Esta semana (${yearToUse})`,
       };
     }
     case 'this_month': {
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      const month = now.getMonth();
+      const startOfMonth = new Date(yearToUse, month, 1);
+      const endOfMonth = new Date(yearToUse, month + 1, 0);
 
-      const startOfPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const endOfPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+      const startOfPrevMonth = new Date(yearToUse, month - 1, 1);
+      const endOfPrevMonth = new Date(yearToUse, month, 0);
 
       return {
         start: toYMD(startOfMonth),
         end: toYMD(endOfMonth),
         prevStart: toYMD(startOfPrevMonth),
         prevEnd: toYMD(endOfPrevMonth),
-        label: 'Este mês',
+        label: `Este mês (${yearToUse})`,
       };
     }
     case 'prev_month': {
-      const startOfPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const endOfPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+      const month = now.getMonth();
+      const startOfPrevMonth = new Date(yearToUse, month - 1, 1);
+      const endOfPrevMonth = new Date(yearToUse, month, 0);
 
-      const startOfTwoMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 2, 1);
-      const endOfTwoMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 1, 0);
+      const startOfTwoMonthsAgo = new Date(yearToUse, month - 2, 1);
+      const endOfTwoMonthsAgo = new Date(yearToUse, month - 1, 0);
 
       return {
         start: toYMD(startOfPrevMonth),
         end: toYMD(endOfPrevMonth),
         prevStart: toYMD(startOfTwoMonthsAgo),
         prevEnd: toYMD(endOfTwoMonthsAgo),
-        label: 'Mês anterior',
+        label: `Mês anterior (${yearToUse})`,
       };
     }
     case 'last_3_months': {
-      const startOf3m = new Date(now.getFullYear(), now.getMonth() - 2, 1);
-      const endOf3m = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      const month = now.getMonth();
+      const startOf3m = new Date(yearToUse, month - 2, 1);
+      const endOf3m = new Date(yearToUse, month + 1, 0);
 
-      const startOfPrev3m = new Date(now.getFullYear(), now.getMonth() - 5, 1);
-      const endOfPrev3m = new Date(now.getFullYear(), now.getMonth() - 2, 0);
+      const startOfPrev3m = new Date(yearToUse, month - 5, 1);
+      const endOfPrev3m = new Date(yearToUse, month - 2, 0);
 
       return {
         start: toYMD(startOf3m),
         end: toYMD(endOf3m),
         prevStart: toYMD(startOfPrev3m),
         prevEnd: toYMD(endOfPrev3m),
-        label: 'Últimos 3 meses',
+        label: `Últimos 3 meses (${yearToUse})`,
       };
     }
     case 'last_6_months': {
-      const startOf6m = new Date(now.getFullYear(), now.getMonth() - 5, 1);
-      const endOf6m = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      const month = now.getMonth();
+      const startOf6m = new Date(yearToUse, month - 5, 1);
+      const endOf6m = new Date(yearToUse, month + 1, 0);
 
-      const startOfPrev6m = new Date(now.getFullYear(), now.getMonth() - 11, 1);
-      const endOfPrev6m = new Date(now.getFullYear(), now.getMonth() - 5, 0);
+      const startOfPrev6m = new Date(yearToUse, month - 11, 1);
+      const endOfPrev6m = new Date(yearToUse, month - 5, 0);
 
       return {
         start: toYMD(startOf6m),
         end: toYMD(endOf6m),
         prevStart: toYMD(startOfPrev6m),
         prevEnd: toYMD(endOfPrev6m),
-        label: 'Últimos 6 meses',
+        label: `Últimos 6 meses (${yearToUse})`,
       };
     }
     case 'this_year': {
-      const startOfYear = new Date(now.getFullYear(), 0, 1);
-      const endOfYear = new Date(now.getFullYear(), 11, 31);
+      const startOfYear = `${yearToUse}-01-01`;
+      const endOfYear = `${yearToUse}-12-31`;
 
-      const startOfPrevYear = new Date(now.getFullYear() - 1, 0, 1);
-      const endOfPrevYear = new Date(now.getFullYear() - 1, 11, 31);
+      const prevYear = yearToUse - 1;
+      const startOfPrevYear = `${prevYear}-01-01`;
+      const endOfPrevYear = `${prevYear}-12-31`;
 
       return {
-        start: toYMD(startOfYear),
-        end: toYMD(endOfYear),
-        prevStart: toYMD(startOfPrevYear),
-        prevEnd: toYMD(endOfPrevYear),
-        label: 'Este ano',
+        start: startOfYear,
+        end: endOfYear,
+        prevStart: startOfPrevYear,
+        prevEnd: endOfPrevYear,
+        label: `Ano ${yearToUse}`,
       };
     }
     case 'custom': {
@@ -253,14 +277,14 @@ export const getPeriodDates = (
       };
     }
     default: {
-      const start = new Date(now.getFullYear(), now.getMonth(), 1);
-      const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      const startOfYear = `${yearToUse}-01-01`;
+      const endOfYear = `${yearToUse}-12-31`;
       return {
-        start: toYMD(start),
-        end: toYMD(end),
-        prevStart: toYMD(start),
-        prevEnd: toYMD(end),
-        label: 'Este mês',
+        start: startOfYear,
+        end: endOfYear,
+        prevStart: `${yearToUse - 1}-01-01`,
+        prevEnd: `${yearToUse - 1}-12-31`,
+        label: `Ano ${yearToUse}`,
       };
     }
   }

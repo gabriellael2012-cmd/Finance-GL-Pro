@@ -50,6 +50,7 @@ export const TransactionModal: React.FC = () => {
     updateTransaction,
     sheetCategories,
     sheetAccounts,
+    selectedYear,
   } = useFinance();
 
   const [type, setType] = useState<TransactionType>('income');
@@ -128,7 +129,10 @@ export const TransactionModal: React.FC = () => {
 
       setCategoryId(cats[0]?.id || '');
       setAccountId(sheetAccounts[0]?.id || availableAccounts[0]?.id || '');
-      setDate(new Date().toISOString().slice(0, 10));
+      const now = new Date();
+      const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
+      const currentDay = String(now.getDate()).padStart(2, '0');
+      setDate(`${selectedYear}-${currentMonth}-${currentDay}`);
       setDueDate('');
       setStatus('completed');
       setPaymentMethod('pix');

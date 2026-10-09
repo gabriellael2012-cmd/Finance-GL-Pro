@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useFinance } from '../../context/FinanceContext';
 import { Logo } from './Logo';
+import { CompactYearSelector } from '../common/CompactYearSelector';
 
 interface HeaderProps {
   onToggleMenu: () => void;
@@ -140,23 +141,8 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMenu, isMenuOpen = false
 
         {/* Center Zone: Independent "Planilha atual" Switcher Pill & Ano Fiscal */}
         <div className="relative shrink-0 flex items-center justify-center gap-2">
-          {/* Quick Year Selector Pill */}
-          <div className="flex items-center p-1 rounded-xl bg-slate-900 border border-slate-800 text-xs shadow-xs">
-            {[2025, 2026, 2027].map((yr) => (
-              <button
-                key={yr}
-                onClick={() => setSelectedYear(yr)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  selectedYear === yr
-                    ? 'bg-blue-600 text-white shadow-xs'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-                title={`Exercício Fiscal ${yr}`}
-              >
-                {yr}
-              </button>
-            ))}
-          </div>
+          {/* Scrollable Compact Year Selector Ribbon */}
+          <CompactYearSelector variant="header" showIcon={true} />
 
           <button
             id="btn-active-sheet-desktop"
@@ -421,7 +407,11 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMenu, isMenuOpen = false
             </button>
 
             <div id="header-mobile-logo" className="shrink-0">
-              <Logo size="sm" showProductTag={true} />
+              <Logo size="sm" showProductTag={false} />
+            </div>
+
+            <div className="shrink-0">
+              <CompactYearSelector variant="header" className="max-w-[130px] sm:max-w-[170px]" />
             </div>
 
             <div className="hidden sm:flex items-center pl-2 border-l border-slate-800 truncate">

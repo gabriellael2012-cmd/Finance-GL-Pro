@@ -22,6 +22,7 @@ import {
   Zap,
   Target,
   ShoppingBag,
+  Calculator,
 } from 'lucide-react';
 import { useFinance } from '../../context/FinanceContext';
 import { PriceAnalysisRecord, PriceStatus, PricingObjective } from '../../types';
@@ -315,7 +316,7 @@ export const PricingAssistantView: React.FC = () => {
         <div>
           <div className="flex items-center gap-2.5">
             <div className="w-10 h-10 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400">
-              <Sparkles className="w-5 h-5" />
+              <Calculator className="w-5 h-5" />
             </div>
             <div>
               <h1 className="text-2xl sm:text-3xl font-display font-extrabold text-white tracking-tight">
@@ -640,11 +641,11 @@ export const PricingAssistantView: React.FC = () => {
               </div>
             </div>
 
-            {/* Observações da IA / Explicação sem jargões */}
+            {/* Parecer do Assistente / Explicação sem jargões */}
             <div className="p-4 rounded-xl bg-slate-950/90 border border-slate-800/80 space-y-2">
               <div className="flex items-center gap-1.5 text-xs font-bold text-slate-200">
-                <Sparkles className="w-3.5 h-3.5 text-blue-400" />
-                <span>Parecer do Assistente:</span>
+                <Calculator className="w-3.5 h-3.5 text-blue-400" />
+                <span>Parecer do Assistente Financeiro:</span>
               </div>
               <p className="text-xs text-slate-300 leading-relaxed">{analysis.explanation}</p>
               <div className="pt-2 text-[10px] text-slate-500 flex items-center gap-1 border-t border-slate-800/60">
