@@ -86,6 +86,14 @@ export interface FinancialSheet {
   startDate?: string; // Data em que o usuário começou o controle financeiro
 }
 
+export interface AuthUser {
+  id: string;
+  name: string;
+  email: string;
+  avatarUrl?: string;
+  createdAt: string;
+}
+
 export interface UserProfile {
   name: string;
   email: string;
@@ -109,6 +117,9 @@ export type PeriodFilter =
 
 export type NavigationTab = 
   | 'dashboard'
+  | 'mobile_menu'
+  | 'mobile_transactions'
+  | 'mobile_charts'
   | 'initial_balances'
   | 'registrations'
   | 'income_types'

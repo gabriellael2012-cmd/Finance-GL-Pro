@@ -20,6 +20,9 @@ import { DatabaseView } from './components/database/DatabaseView';
 import { HelpCenterView } from './components/help/HelpCenterView';
 import { SettingsView } from './components/settings/SettingsView';
 import { PricingAssistantView } from './components/pricing/PricingAssistantView';
+import { MobileMenuView } from './components/mobile/MobileMenuView';
+import { MobileBottomNav } from './components/layout/MobileBottomNav';
+import { LoginView } from './components/auth/LoginView';
 import { TransactionModal } from './components/modals/TransactionModal';
 import { TransferModal } from './components/modals/TransferModal';
 import { GlobalSearchModal } from './components/modals/GlobalSearchModal';
@@ -27,13 +30,19 @@ import { OnboardingModal } from './components/onboarding/OnboardingModal';
 import { ToastContainer } from './components/layout/ToastContainer';
 
 const AppContent: React.FC = () => {
-  const { activeTab } = useFinance();
+  const { activeTab, isAuthenticated } = useFinance();
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
+
+  if (!isAuthenticated) {
+    return <LoginView />;
+  }
 
   const renderActiveView = () => {
     switch (activeTab) {
       case 'dashboard':
         return <DashboardView />;
+      case 'mobile_menu':
+        return <MobileMenuView />;
       case 'initial_balances':
         return <InitialBalancesView />;
       case 'registrations':
@@ -123,7 +132,7 @@ const AppContent: React.FC = () => {
           isMenuOpen={sidebarOpen}
         />
 
-        <main className="flex-1 p-3 sm:p-5 lg:p-7 w-full max-w-7xl mx-auto">
+        <main className="flex-1 p-3 sm:p-5 lg:p-7 w-full max-w-7xl mx-auto pb-24 lg:pb-8">
           <div
             key={activeTab}
             className="w-full transition-all duration-300 animate-in fade-in slide-in-from-bottom-2"
@@ -132,6 +141,9 @@ const AppContent: React.FC = () => {
           </div>
         </main>
       </div>
+
+      {/* Mobile Fixed Bottom Navigation Bar (< lg screens) */}
+      <MobileBottomNav />
 
       {/* Modals Container */}
       <TransactionModal />

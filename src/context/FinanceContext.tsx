@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import {
   Account,
+  AuthUser,
   Category,
   Client,
   CustomCategoryItem,
@@ -82,6 +83,17 @@ interface FinanceContextType {
   isTransferModalOpen: boolean;
   isOnboardingOpen: boolean;
   onboardingOpen: boolean;
+
+  // Auth State & Actions
+  authUser: AuthUser | null;
+  isAuthenticated: boolean;
+  isAuthLoading: boolean;
+  authError: string | null;
+  login: (email: string, password: string) => Promise<boolean>;
+  register: (name: string, email: string, password: string) => Promise<boolean>;
+  logout: () => void;
+  resetPassword: (email: string) => Promise<boolean>;
+  clearAuthError: () => void;
 
   // Setters & Nav
   setActiveTab: (tab: NavigationTab) => void;
@@ -257,6 +269,8 @@ const STORAGE_KEYS = {
   REVENUE_GOALS: 'finance_gl_pro_revenue_goals_v2',
   EXPENSE_GOALS: 'finance_gl_pro_expense_goals_v2',
   SELECTED_YEAR: 'finance_gl_pro_selected_year_v2',
+  AUTH_SESSION: 'finance_gl_pro_auth_session_v2',
+  REGISTERED_USERS: 'finance_gl_pro_registered_users_v2',
 };
 
 const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
@@ -411,6 +425,208 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       return false;
     }
   });
+
+  // Authentication State
+  const [authUser, setAuthUser] = useState<AuthUser | null>(() => {
+    try {
+      const savedSession = localStorage.getItem(STORAGE_KEYS.AUTH_SESSION);
+      if (savedSession) {
+        const parsed = JSON.parse(savedSession);
+        if (parsed && (parsed.id || parsed.email)) {
+          return parsed;
+        }
+      }
+    } catch {
+      // fallback
+    }
+    return null;
+  });
+  const [isAuthLoading, setIsAuthLoading] = useState<boolean>(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  // Sync auth session if userProfile is edited
+  useEffect(() => {
+    if (authUser && (userProfile.name || userProfile.email)) {
+      setAuthUser((prev) => {
+        if (!prev) return prev;
+        const updated = {
+          ...prev,
+          name: userProfile.name || prev.name,
+          email: userProfile.email || prev.email,
+        };
+        localStorage.setItem(STORAGE_KEYS.AUTH_SESSION, JSON.stringify(updated));
+        return updated;
+      });
+    }
+  }, [userProfile.name, userProfile.email]);
+
+  const login = async (email: string, pass: string): Promise<boolean> => {
+    setAuthError(null);
+    setIsAuthLoading(true);
+
+    try {
+      const cleanEmail = email.trim().toLowerCase();
+      const cleanPass = pass.trim();
+
+      if (!cleanEmail || !cleanPass) {
+        setAuthError('Preencha o e-mail e a senha para acessar.');
+        setIsAuthLoading(false);
+        return false;
+      }
+
+      // Check registered users in storage
+      const savedUsersRaw = localStorage.getItem(STORAGE_KEYS.REGISTERED_USERS);
+      let registeredUsers: Array<{ id: string; name: string; email: string; pass: string; createdAt: string }> = [];
+      if (savedUsersRaw) {
+        try {
+          registeredUsers = JSON.parse(savedUsersRaw);
+        } catch {
+          registeredUsers = [];
+        }
+      }
+
+      let matched = registeredUsers.find((u) => u.email.toLowerCase() === cleanEmail);
+
+      // Auto-register first time so user can access immediately with any email/password
+      if (!matched) {
+        if (cleanPass.length < 4) {
+          setAuthError('A senha deve conter no mínimo 4 caracteres.');
+          setIsAuthLoading(false);
+          return false;
+        }
+        const derivedName = cleanEmail.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+        const newUser = {
+          id: `usr-${Date.now()}`,
+          name: derivedName || 'Usuário',
+          email: cleanEmail,
+          pass: cleanPass,
+          createdAt: new Date().toISOString(),
+        };
+        registeredUsers.push(newUser);
+        localStorage.setItem(STORAGE_KEYS.REGISTERED_USERS, JSON.stringify(registeredUsers));
+        matched = newUser;
+      } else if (matched.pass && matched.pass !== cleanPass) {
+        setAuthError('Senha incorreta. Verifique suas credenciais.');
+        setIsAuthLoading(false);
+        return false;
+      }
+
+      const sessionUser: AuthUser = {
+        id: matched.id,
+        name: matched.name,
+        email: matched.email,
+        createdAt: matched.createdAt,
+      };
+
+      localStorage.setItem(STORAGE_KEYS.AUTH_SESSION, JSON.stringify(sessionUser));
+      setAuthUser(sessionUser);
+      setUserProfile((prev) => ({
+        ...prev,
+        name: sessionUser.name,
+        email: sessionUser.email,
+      }));
+      setIsAuthLoading(false);
+      showToast('Bem-vindo!', `Login realizado com sucesso.`, 'success');
+      return true;
+    } catch {
+      setAuthError('Falha ao autenticar. Tente novamente.');
+      setIsAuthLoading(false);
+      return false;
+    }
+  };
+
+  const register = async (name: string, email: string, pass: string): Promise<boolean> => {
+    setAuthError(null);
+    setIsAuthLoading(true);
+
+    try {
+      const cleanName = name.trim();
+      const cleanEmail = email.trim().toLowerCase();
+      const cleanPass = pass.trim();
+
+      if (!cleanName || !cleanEmail || !cleanPass) {
+        setAuthError('Preencha todos os campos obrigatórios.');
+        setIsAuthLoading(false);
+        return false;
+      }
+
+      if (cleanPass.length < 4) {
+        setAuthError('A senha deve conter no mínimo 4 caracteres.');
+        setIsAuthLoading(false);
+        return false;
+      }
+
+      const savedUsersRaw = localStorage.getItem(STORAGE_KEYS.REGISTERED_USERS);
+      let registeredUsers: Array<{ id: string; name: string; email: string; pass: string; createdAt: string }> = [];
+      if (savedUsersRaw) {
+        try {
+          registeredUsers = JSON.parse(savedUsersRaw);
+        } catch {
+          registeredUsers = [];
+        }
+      }
+
+      if (registeredUsers.some((u) => u.email.toLowerCase() === cleanEmail)) {
+        setAuthError('Este e-mail já possui cadastro. Faça login para acessar.');
+        setIsAuthLoading(false);
+        return false;
+      }
+
+      const newUser = {
+        id: `usr-${Date.now()}`,
+        name: cleanName,
+        email: cleanEmail,
+        pass: cleanPass,
+        createdAt: new Date().toISOString(),
+      };
+
+      registeredUsers.push(newUser);
+      localStorage.setItem(STORAGE_KEYS.REGISTERED_USERS, JSON.stringify(registeredUsers));
+
+      const sessionUser: AuthUser = {
+        id: newUser.id,
+        name: newUser.name,
+        email: newUser.email,
+        createdAt: newUser.createdAt,
+      };
+
+      localStorage.setItem(STORAGE_KEYS.AUTH_SESSION, JSON.stringify(sessionUser));
+      setAuthUser(sessionUser);
+      setUserProfile((prev) => ({
+        ...prev,
+        name: sessionUser.name,
+        email: sessionUser.email,
+      }));
+      setIsAuthLoading(false);
+      showToast('Conta criada com sucesso!', `Bem-vindo ao Finance GL Pro!`, 'success');
+      return true;
+    } catch {
+      setAuthError('Ocorreu um erro ao criar a conta. Tente novamente.');
+      setIsAuthLoading(false);
+      return false;
+    }
+  };
+
+  const logout = () => {
+    localStorage.removeItem(STORAGE_KEYS.AUTH_SESSION);
+    setAuthUser(null);
+    setActiveTab('dashboard');
+    showToast('Sessão encerrada', 'Você saiu da sua conta com segurança.', 'info');
+  };
+
+  const resetPassword = async (email: string): Promise<boolean> => {
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail) {
+      setAuthError('Informe o e-mail cadastrado para redefinir a senha.');
+      return false;
+    }
+    showToast('E-mail enviado', `Instruções de recuperação enviadas para ${cleanEmail}.`, 'info');
+    return true;
+  };
+
+  const clearAuthError = () => {
+    setAuthError(null);
+  };
 
   // Sync to local storage
   useEffect(() => {
@@ -1734,6 +1950,17 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         isTransferModalOpen: transferModalOpen,
         isOnboardingOpen: onboardingOpen,
         onboardingOpen,
+
+        // Auth
+        authUser,
+        isAuthenticated: !!authUser,
+        isAuthLoading,
+        authError,
+        login,
+        register,
+        logout,
+        resetPassword,
+        clearAuthError,
 
         setActiveTab,
         setPeriodFilter,

@@ -8,7 +8,7 @@ export const INITIAL_USER_PROFILE: UserProfile = {
   avatarUrl: undefined,
   monthlyIncomeTarget: 0,
   monthlyExpenseLimit: 0,
-  onboardingCompleted: false,
+  onboardingCompleted: true,
 };
 
 export const INITIAL_SHEETS: FinancialSheet[] = [

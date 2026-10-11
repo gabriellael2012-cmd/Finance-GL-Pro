@@ -28,6 +28,7 @@ import {
   TrendingUp,
   TrendingDown,
   Calculator,
+  LogOut,
 } from 'lucide-react';
 import { useFinance } from '../../context/FinanceContext';
 import { NavigationTab } from '../../types';
@@ -58,6 +59,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     overduePayables,
     upcomingPayables,
     setOnboardingOpen,
+    logout,
   } = useFinance();
 
   const [financeMenuExpanded, setFinanceMenuExpanded] = useState<boolean>(true);
@@ -600,8 +602,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </button>
         </div>
 
-        {/* Bottom Banner: Status do Sistema e Ação Rápida */}
-        <div className="p-3 border-t border-slate-900 bg-slate-950/80">
+        {/* Bottom Banner: Status do Sistema, Configurações e Logout */}
+        <div className="p-3 border-t border-slate-900 bg-slate-950/80 space-y-2">
           <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/80 border border-slate-800/60">
             <div className="flex items-center gap-2.5">
               <div className="w-7 h-7 rounded-lg bg-blue-950/60 border border-blue-800/40 flex items-center justify-center text-blue-400 text-xs font-bold shrink-0">
@@ -617,12 +619,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 setOnboardingOpen(true);
                 handleClose();
               }}
-              className="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 transition-colors"
+              className="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 transition-colors cursor-pointer"
               title="Configurar Conta & Planilha"
             >
               <Settings className="w-3.5 h-3.5" />
             </button>
           </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              handleClose();
+              logout();
+            }}
+            className="w-full py-2 px-3 rounded-xl bg-slate-900 hover:bg-rose-950/40 border border-slate-800 hover:border-rose-800/40 text-slate-400 hover:text-rose-300 text-xs font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+          >
+            <LogOut className="w-3.5 h-3.5 text-slate-400 group-hover:text-rose-400" />
+            <span>Sair da Conta</span>
+          </button>
         </div>
       </aside>
     </>
